@@ -1,0 +1,11 @@
+[project]
+name = "motion-blur"
+version = "0.1.0"
+description = "Car racing game with motion blur"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "glfw>=2.10.0",
+    "numpy>=2.3.4",
+    "pyopengl>=3.1.10",
+]
