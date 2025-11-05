@@ -48,6 +48,66 @@ def create_shader_program(vertex_file, fragment_file):
 
     return program
 
+def cube_vertices():
+    return np.array([
+        # positions         # normals
+        # front face
+        -0.5, -0.5,  0.5,    0.0,  0.0,  1.0,
+         0.5, -0.5,  0.5,    0.0,  0.0,  1.0,
+         0.5,  0.5,  0.5,    0.0,  0.0,  1.0,
+         0.5,  0.5,  0.5,    0.0,  0.0,  1.0,
+        -0.5,  0.5,  0.5,    0.0,  0.0,  1.0,
+        -0.5, -0.5,  0.5,    0.0,  0.0,  1.0,
+
+        # back face
+        -0.5, -0.5, -0.5,    0.0,  0.0, -1.0,
+        -0.5,  0.5, -0.5,    0.0,  0.0, -1.0,
+         0.5,  0.5, -0.5,    0.0,  0.0, -1.0,
+         0.5,  0.5, -0.5,    0.0,  0.0, -1.0,
+         0.5, -0.5, -0.5,    0.0,  0.0, -1.0,
+        -0.5, -0.5, -0.5,    0.0,  0.0, -1.0,
+
+        # left face
+        -0.5,  0.5,  0.5,   -1.0,  0.0,  0.0,
+        -0.5,  0.5, -0.5,   -1.0,  0.0,  0.0,
+        -0.5, -0.5, -0.5,   -1.0,  0.0,  0.0,
+        -0.5, -0.5, -0.5,   -1.0,  0.0,  0.0,
+        -0.5, -0.5,  0.5,   -1.0,  0.0,  0.0,
+        -0.5,  0.5,  0.5,   -1.0,  0.0,  0.0,
+
+        # right face
+         0.5,  0.5,  0.5,    1.0,  0.0,  0.0,
+         0.5, -0.5, -0.5,    1.0,  0.0,  0.0,
+         0.5,  0.5, -0.5,    1.0,  0.0,  0.0,
+         0.5, -0.5, -0.5,    1.0,  0.0,  0.0,
+         0.5,  0.5,  0.5,    1.0,  0.0,  0.0,
+         0.5, -0.5,  0.5,    1.0,  0.0,  0.0,
+
+        # bottom face
+        -0.5, -0.5, -0.5,    0.0, -1.0,  0.0,
+         0.5, -0.5, -0.5,    0.0, -1.0,  0.0,
+         0.5, -0.5,  0.5,    0.0, -1.0,  0.0,
+         0.5, -0.5,  0.5,    0.0, -1.0,  0.0,
+        -0.5, -0.5,  0.5,    0.0, -1.0,  0.0,
+        -0.5, -0.5, -0.5,    0.0, -1.0,  0.0,
+
+        # top face
+        -0.5,  0.5, -0.5,    0.0,  1.0,  0.0,
+        -0.5,  0.5,  0.5,    0.0,  1.0,  0.0,
+         0.5,  0.5,  0.5,    0.0,  1.0,  0.0,
+         0.5,  0.5,  0.5,    0.0,  1.0,  0.0,
+         0.5,  0.5, -0.5,    0.0,  1.0,  0.0,
+        -0.5,  0.5, -0.5,    0.0,  1.0,  0.0
+    ], dtype=np.float32)
+
+def triangle_vertices():
+    return np.array([
+        #  pos               normal
+        -0.5, -0.5, 0.0,     0.0, 0.0, 1.0,
+         0.5, -0.5, 0.0,     0.0, 0.0, 1.0,
+         0.0,  0.5, 0.0,     0.0, 0.0, 1.0,
+    ], dtype=np.float32)
+
 
 def main():
     if not glfw.init():
@@ -66,13 +126,7 @@ def main():
 
     glfw.make_context_current(window)
 
-    # vertices = [-0.5, -0.5, 0.0, 0.5, -0.5, 0.0, 0.0, 0.5, 0.0]
-    vertices = np.array([
-        #  pos               normal
-        -0.5, -0.5, 0.0,     0.0, 0.0, 1.0,
-         0.5, -0.5, 0.0,     0.0, 0.0, 1.0,
-         0.0,  0.5, 0.0,     0.0, 0.0, 1.0,
-    ], dtype=np.float32)
+    vertices = cube_vertices()
 
     # shader_program = create_shader_program("simple.vert", "simple.frag")
     shader_program = create_shader_program("phong.vert", "phong.frag")
@@ -87,8 +141,6 @@ def main():
     glBindBuffer(GL_ARRAY_BUFFER, vbo)
     glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices, GL_STATIC_DRAW)
 
-    # glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
-    # glEnableVertexAttribArray(0)
     stride = 6 * vertices.itemsize
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(0))
     glEnableVertexAttribArray(0)
@@ -98,7 +150,6 @@ def main():
     glBindBuffer(GL_ARRAY_BUFFER, 0)
     glBindVertexArray(0)
 
-    # glClearColor(0.0, 0.0, 0.0, 1.0)
     glEnable(GL_DEPTH_TEST)
     glClearColor(0.1, 0.1, 0.1, 1.0)
 
@@ -116,27 +167,13 @@ def main():
         return loc
 
     loc_model = uni("model")
-    loc_view = uni("view")
-    loc_projection = uni("projection")
     loc_normalMatrix = uni("normalMatrix")
-    loc_lightPos = uni("lightPos")
-    loc_viewPos = uni("viewPos")
-    # material
-    loc_mat_ambient = uni("material.ambient")
-    loc_mat_diffuse = uni("material.diffuse")
-    loc_mat_specular = uni("material.specular")
-    loc_mat_shin = uni("material.shininess")
-    # light
-    loc_light_ambient = uni("light.ambient")
-    loc_light_diffuse = uni("light.diffuse")
-    loc_light_specular = uni("light.specular")
 
     fb_w, fb_h = glfw.get_framebuffer_size(window)
 
     # initial camera / projection
     view = glm.lookAt(glm.vec3(0.0, 0.0, 2.0), glm.vec3(0.0, 0.0, 0.0), glm.vec3(0.0, 1.0, 0.0))
     projection = glm.perspective(glm.radians(45.0), fb_w / fb_h if fb_h != 0 else 4/3, 0.1, 100.0)
-
 
     glUniformMatrix4fv(uni("model"), 1, GL_FALSE, glm.value_ptr(model))
     glUniformMatrix4fv(uni("view"), 1, GL_FALSE, glm.value_ptr(view))
@@ -158,10 +195,7 @@ def main():
     glUniform3f(uni("light.specular"), 1.0, 1.0, 1.0)
 
     # Main loop
-
     while not glfw.window_should_close(window):
-        # glClear(GL_COLOR_BUFFER_BIT)
-
         # handle window resize
         fb_w, fb_h = glfw.get_framebuffer_size(window)
         glViewport(0, 0, fb_w, fb_h)
@@ -182,7 +216,7 @@ def main():
 
         glUseProgram(shader_program)
         glBindVertexArray(vao)
-        glDrawArrays(GL_TRIANGLES, 0, 3)
+        glDrawArrays(GL_TRIANGLES, 0, 36)
         glBindVertexArray(0)
 
         glfw.swap_buffers(window)
