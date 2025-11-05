@@ -1,6 +1,8 @@
 import glfw
 from OpenGL.GL import *
 import numpy as np
+import glm
+import pywavefront
 
 
 def load_shader(shader_file, shader_type):
@@ -65,14 +67,56 @@ def main():
 
     glfw.make_context_current(window)
 
-    vertices = [-0.5, -0.5, 0.0, 0.5, -0.5, 0.0, 0.0, 0.5, 0.0]
+    glEnable(GL_DEPTH_TEST)
 
-    vertices_np = np.array(vertices, dtype=np.float32)
+    try:
+        scene = pywavefront.Wavefront("car.obj", create_materials=True, parse=True)
+
+        mesh = list(scene.meshes.values())[0]
+
+        if not mesh.materials:
+            raise Exception("cannot read vertices")
+
+        material = mesh.materials[0]
+
+        data = material.vertices
+        vertex_format_string = material.vertex_format
+
+        vertex_format_size = 0
+        if "T2F" in vertex_format_string:
+            vertex_format_size += 2
+        if "T3F" in vertex_format_string:
+            vertex_format_size += 3
+        if "C3F" in vertex_format_string:
+            vertex_format_size += 3
+        if "N3F" in vertex_format_string:
+            vertex_format_size += 3
+        if "V3F" in vertex_format_string:
+            vertex_format_size += 3
+
+        if vertex_format_size == 0 or "V3F" not in vertex_format_string:
+            raise Exception("Cannot find position data (V3F) in a model")
+
+        positions = []
+        for i in range(0, len(data), vertex_format_size):
+            positions.append(data[i + vertex_format_size - 3])  # v_x
+            positions.append(data[i + vertex_format_size - 2])  # v_y
+            positions.append(data[i + vertex_format_size - 1])  # v_z
+
+        vertices_np = np.array(positions, dtype=np.float32)
+        vertex_count = len(positions) // 3
+
+    except Exception as e:
+        print(f"Error reading the model: {e}")
+        glfw.terminate()
+        return
 
     shader_program = create_shader_program("simple.vert", "simple.frag")
     if not shader_program:
         glfw.terminate()
         return
+
+    mvp_location = glGetUniformLocation(shader_program, "u_mvp")
 
     vao = glGenVertexArrays(1)
     glBindVertexArray(vao)
@@ -90,13 +134,26 @@ def main():
     glClearColor(0.0, 0.0, 0.0, 1.0)
 
     while not glfw.window_should_close(window):
-        glClear(GL_COLOR_BUFFER_BIT)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
+        projection = glm.perspective(glm.radians(45.0), 800 / 600, 0.1, 100.0)
+
+        view = glm.lookAt(glm.vec3(0, 0, 5), glm.vec3(0, 0, 0), glm.vec3(0, 1, 0))
+
+        model = glm.mat4(1.0)
+        time_val = glfw.get_time()
+        model = glm.rotate(model, time_val * glm.radians(50.0), glm.vec3(0.0, 1.0, 0.0))
+        model = glm.scale(model, glm.vec3(0.2, 0.2, 0.2))
+
+        mvp = projection * view * model
 
         glUseProgram(shader_program)
 
+        glUniformMatrix4fv(mvp_location, 1, GL_FALSE, glm.value_ptr(mvp))
+
         glBindVertexArray(vao)
 
-        glDrawArrays(GL_TRIANGLES, 0, 3)
+        glDrawArrays(GL_TRIANGLES, 0, vertex_count)
 
         glBindVertexArray(0)
 
