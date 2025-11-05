@@ -128,50 +128,47 @@ def main():
 
     glfw.make_context_current(window)
 
-    # vertices = cube_vertices()
+    # try:
+    #     scene = pywavefront.Wavefront("car.obj", create_materials=True, parse=True)
 
+    #     mesh = list(scene.meshes.values())[0]
 
-    try:
-        scene = pywavefront.Wavefront("car.obj", create_materials=True, parse=True)
+    #     if not mesh.materials:
+    #         raise Exception("cannot read vertices")
 
-        mesh = list(scene.meshes.values())[0]
+    #     material = mesh.materials[0]
 
-        if not mesh.materials:
-            raise Exception("cannot read vertices")
+    #     data = material.vertices
+    #     vertex_format_string = material.vertex_format
 
-        material = mesh.materials[0]
+    #     vertex_format_size = 0
+    #     if "T2F" in vertex_format_string:
+    #         vertex_format_size += 2
+    #     if "T3F" in vertex_format_string:
+    #         vertex_format_size += 3
+    #     if "C3F" in vertex_format_string:
+    #         vertex_format_size += 3
+    #     if "N3F" in vertex_format_string:
+    #         vertex_format_size += 3
+    #     if "V3F" in vertex_format_string:
+    #         vertex_format_size += 3
 
-        data = material.vertices
-        vertex_format_string = material.vertex_format
+    #     if vertex_format_size == 0 or "V3F" not in vertex_format_string:
+    #         raise Exception("Cannot find position data (V3F) in a model")
 
-        vertex_format_size = 0
-        if "T2F" in vertex_format_string:
-            vertex_format_size += 2
-        if "T3F" in vertex_format_string:
-            vertex_format_size += 3
-        if "C3F" in vertex_format_string:
-            vertex_format_size += 3
-        if "N3F" in vertex_format_string:
-            vertex_format_size += 3
-        if "V3F" in vertex_format_string:
-            vertex_format_size += 3
+    #     positions = []
+    #     for i in range(0, len(data), vertex_format_size):
+    #         positions.append(data[i + vertex_format_size - 3])  # v_x
+    #         positions.append(data[i + vertex_format_size - 2])  # v_y
+    #         positions.append(data[i + vertex_format_size - 1])  # v_z
 
-        if vertex_format_size == 0 or "V3F" not in vertex_format_string:
-            raise Exception("Cannot find position data (V3F) in a model")
+    #     vertices_np = np.array(positions, dtype=np.float32)
+    #     vertex_count = len(positions) // 3
 
-        positions = []
-        for i in range(0, len(data), vertex_format_size):
-            positions.append(data[i + vertex_format_size - 3])  # v_x
-            positions.append(data[i + vertex_format_size - 2])  # v_y
-            positions.append(data[i + vertex_format_size - 1])  # v_z
-
-        vertices_np = np.array(positions, dtype=np.float32)
-        vertex_count = len(positions) // 3
-
-    except Exception as e:
-        print(f"Error reading the model: {e}")
-        glfw.terminate()
-        return
+    # except Exception as e:
+    #     print(f"Error reading the model: {e}")
+    #     glfw.terminate()
+    #     return
 
     # shader_program = create_shader_program("simple.vert", "simple.frag")
     shader_program = create_shader_program("phong.vert", "phong.frag")
@@ -184,6 +181,8 @@ def main():
 
     vao = glGenVertexArrays(1)
     glBindVertexArray(vao)
+
+    vertices_np = cube_vertices()
 
     vbo = glGenBuffers(1)
     glBindBuffer(GL_ARRAY_BUFFER, vbo)
@@ -248,17 +247,6 @@ def main():
         fb_w, fb_h = glfw.get_framebuffer_size(window)
         glViewport(0, 0, fb_w, fb_h)
 
-        # clear both color and depth
-        # glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-
-        # animate rotation so we actually see lighting change
-        # t = glfw.get_time()
-        # model = glm.rotate(glm.mat4(1.0), t * 0.8, glm.vec3(0.0, 1.0, 0.0))
-
-
-        # glUseProgram(shader_program)
-        # glBindVertexArray(vao)
-        glDrawArrays(GL_TRIANGLES, 0, 36)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         projection = glm.perspective(glm.radians(45.0), 800 / 600, 0.1, 100.0)
@@ -283,6 +271,9 @@ def main():
         glUniformMatrix4fv(mvp_location, 1, GL_FALSE, glm.value_ptr(mvp))
 
         glBindVertexArray(vao)
+
+        # TODO
+        vertex_count = 36
 
         glDrawArrays(GL_TRIANGLES, 0, vertex_count)
 
