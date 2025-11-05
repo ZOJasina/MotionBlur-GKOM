@@ -31,3 +31,22 @@ osoby)
 **(a) obiekty powinny rozmazywać się wraz z ruchem
 **(b) należy uwzględnić odległość od obiektów - obiekty bliższe rozmazują
 się bardziej niż dalsze
+
+## Wymagania projektu
+* W ramach projektu należy stworzyć program, który będzie realizował opisane w
+temacie funkcje. Projekt jest zadaniem zespołowym, gdzie każdy zespół składa
+się z 3 osób.
+* Głównym językiem programowania może być język Python lub C++. Do
+realizacji funkcji graficznych należy wykorzystać bibliotekę OpenGL wraz z ję-
+zykiem shaderów GLSL.
+* Za projekt można uzyskać maksymalnie x × 15p., gdzie x to liczba osób w
+zespole. Każdy z członków zespołu może dostać maksymalnie 15 punktów.
+## Ocenie w ramach projektu podlegają:
+* 1. Działanie programu - realizacja funkcji (9 p.)
+* 2. Efekty wizualne - prezentacja działania programu oraz kroku algorytmu
+w przyjemnie wizualny sposób (przygotowanie modeli, scenerii itd.) (2 p.)
+* 3. Jakość kodu (3 p.)
+* 4. Prezentacja wykonana na ostatnim wykładzie (1 p.)
+Projekt musi być pokazany odpowiedniemu prowadzącemu przed terminem
+ostatniego wykładu. Dodatkowo, brak prezentacji na ostatnim wykładzie skut-
+kuje niezaliczeniem projektu.
