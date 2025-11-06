@@ -51,6 +51,42 @@ def create_shader_program(vertex_file, fragment_file):
 
     return program
 
+def setup_model(vertices_np):
+    """Creates VAO + VBO for given vertex array."""
+    vao = glGenVertexArrays(1)
+    glBindVertexArray(vao)
+
+    vbo = glGenBuffers(1)
+    glBindBuffer(GL_ARRAY_BUFFER, vbo)
+    glBufferData(GL_ARRAY_BUFFER, vertices_np.nbytes, vertices_np, GL_STATIC_DRAW)
+
+    stride = 6 * vertices_np.itemsize
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(0))
+    glEnableVertexAttribArray(0)
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(12))
+    glEnableVertexAttribArray(1)
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0)
+    glBindVertexArray(0)
+
+    return vao, vbo
+
+
+def render_model(shader, vao, vertex_count, model, view, projection):
+    """Renders a model with given transformation matrices."""
+    glUseProgram(shader)
+    normalMatrix = glm.transpose(glm.inverse(glm.mat3(model)))
+
+    # Set uniforms
+    glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, glm.value_ptr(model))
+    glUniformMatrix4fv(glGetUniformLocation(shader, "view"), 1, GL_FALSE, glm.value_ptr(view))
+    glUniformMatrix4fv(glGetUniformLocation(shader, "projection"), 1, GL_FALSE, glm.value_ptr(projection))
+    glUniformMatrix3fv(glGetUniformLocation(shader, "normalMatrix"), 1, GL_FALSE, glm.value_ptr(normalMatrix))
+
+    glBindVertexArray(vao)
+    glDrawArrays(GL_TRIANGLES, 0, vertex_count)
+    glBindVertexArray(0)
+    return
 
 def main():
     if not glfw.init():
@@ -77,56 +113,28 @@ def main():
 
     mvp_location = glGetUniformLocation(shader_program, "u_mvp")
 
-    vao = glGenVertexArrays(1)
-    glBindVertexArray(vao)
 
     #TODO: use load_model function from vertex_models file
     # vertex_count, vertices_np = load_model("car.obj")
     vertices_np = cube_vertices()
     vertex_count = 36
 
-    vbo = glGenBuffers(1)
-    glBindBuffer(GL_ARRAY_BUFFER, vbo)
-    glBufferData(GL_ARRAY_BUFFER, vertices_np.nbytes, vertices_np, GL_STATIC_DRAW)
+    vao1, vbo1 = setup_model(vertices_np)
+    vao2, vbo2 = setup_model(vertices_np)
 
-    stride = 6 * vertices_np.itemsize
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(0))
-    glEnableVertexAttribArray(0)
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(12))
-    glEnableVertexAttribArray(1)
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0)
-    glBindVertexArray(0)
-
-    glEnable(GL_DEPTH_TEST)
     glClearColor(0.1, 0.1, 0.1, 1.0)
 
     # Set up light and camera
     glUseProgram(shader_program)
-    model = glm.mat4(1.0)
     view = glm.lookAt(glm.vec3(0, 0, 2), glm.vec3(0, 0, 0), glm.vec3(0, 1, 0))
-    projection = glm.perspective(glm.radians(45), 800/600, 0.1, 100.0)
-    normalMatrix = glm.transpose(glm.inverse(glm.mat3(model)))
+    fb_w, fb_h = glfw.get_framebuffer_size(window)
+    projection = glm.perspective(glm.radians(45.0), fb_w / fb_h if fb_h != 0 else 4/3, 0.1, 100.0)
 
     def uni(name):
         loc = glGetUniformLocation(shader_program, name)
         if loc == -1:
             print(f"Warning: uniform '{name}' not found (location = -1). Maybe it's optimized out or name mismatch.")
         return loc
-
-    loc_model = uni("model")
-    loc_normalMatrix = uni("normalMatrix")
-
-    fb_w, fb_h = glfw.get_framebuffer_size(window)
-
-    # initial camera / projection
-    view = glm.lookAt(glm.vec3(0.0, 0.0, 2.0), glm.vec3(0.0, 0.0, 0.0), glm.vec3(0.0, 1.0, 0.0))
-    projection = glm.perspective(glm.radians(45.0), fb_w / fb_h if fb_h != 0 else 4/3, 0.1, 100.0)
-
-    glUniformMatrix4fv(uni("model"), 1, GL_FALSE, glm.value_ptr(model))
-    glUniformMatrix4fv(uni("view"), 1, GL_FALSE, glm.value_ptr(view))
-    glUniformMatrix4fv(uni("projection"), 1, GL_FALSE, glm.value_ptr(projection))
-    glUniformMatrix3fv(uni("normalMatrix"), 1, GL_FALSE, glm.value_ptr(normalMatrix))
 
     glUniform3f(uni("lightPos"), 1.2, 1.0, 2.0)
     glUniform3f(uni("viewPos"), 0.0, 0.0, 2.0)
@@ -150,38 +158,30 @@ def main():
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-        projection = glm.perspective(glm.radians(45.0), 800 / 600, 0.1, 100.0)
-
-        view = glm.lookAt(glm.vec3(0, 0, 5), glm.vec3(0, 0, 0), glm.vec3(0, 1, 0))
-
-        model = glm.mat4(1.0)
         time_val = glfw.get_time()
-        model = glm.rotate(model, time_val * glm.radians(50.0), glm.vec3(0.0, 1.0, 0.0))
-        model = glm.scale(model, glm.vec3(0.2, 0.2, 0.2))
-        normalMatrix = glm.transpose(glm.inverse(glm.mat3(model)))
 
-        if loc_model != -1:
-            glUniformMatrix4fv(loc_model, 1, GL_FALSE, glm.value_ptr(model))
-        if loc_normalMatrix != -1:
-            glUniformMatrix3fv(loc_normalMatrix, 1, GL_FALSE, glm.value_ptr(normalMatrix))
+        # First cube
+        model1 = glm.mat4(1.0)
+        model1 = glm.translate(model1, glm.vec3(-0.5, 0.0, 0.0))
+        model1 = glm.rotate(model1, time_val, glm.vec3(0.0, 1.0, 0.0))
+        model1 = glm.scale(model1, glm.vec3(0.5))
 
-        mvp = projection * view * model
+        # Second cube
+        model2 = glm.mat4(1.0)
+        model2 = glm.translate(model2, glm.vec3(0.5, 0.0, 0.0))
+        model2 = glm.rotate(model2, -time_val, glm.vec3(1.0, 1.0, 0.0))
+        model2 = glm.scale(model2, glm.vec3(0.3))
 
-        glUseProgram(shader_program)
-
-        glUniformMatrix4fv(mvp_location, 1, GL_FALSE, glm.value_ptr(mvp))
-
-        glBindVertexArray(vao)
-
-        glDrawArrays(GL_TRIANGLES, 0, vertex_count)
-
-        glBindVertexArray(0)
+        render_model(shader_program, vao1, vertex_count, model1, view, projection)
+        render_model(shader_program, vao2, vertex_count, model2, view, projection)
 
         glfw.swap_buffers(window)
         glfw.poll_events()
 
-    glDeleteVertexArrays(1, [vao])
-    glDeleteBuffers(1, [vbo])
+    glDeleteVertexArrays(1, [vao1])
+    glDeleteBuffers(1, [vbo1])
+    glDeleteVertexArrays(1, [vao2])
+    glDeleteBuffers(1, [vbo2])
     glDeleteProgram(shader_program)
 
     glfw.terminate()
