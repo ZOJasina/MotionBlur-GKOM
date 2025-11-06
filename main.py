@@ -207,11 +207,11 @@ def main():
         render_complex_model(shader_program, pine_tree_left_vao, pine_tree_left_draw_commands, model_pine_tree_left, view, projection)
 
         # Render the batched right green tree model
-        model_green_tree_right = glm.mat4(1.0)
+        model_green_tree_right = glm.mat4(0.3)
         model_green_tree_right = glm.translate(model_green_tree_right, glm.vec3(0.5, -0.5, 0.0))
         # model_green_tree_right = glm.rotate(model_green_tree_right, time_val * glm.radians(45.0), glm.vec3(0.0, 1.0, 0.0))
         model_green_tree_right = glm.scale(model_green_tree_right, glm.vec3(0.2))
-        render_complex_model(shader_program, green_tree_right_vao, road_draw_commands, model_green_tree_right, view, projection)
+        render_complex_model(shader_program, green_tree_right_vao, green_tree_right_draw_commands, model_green_tree_right, view, projection)
 
 
         glfw.swap_buffers(window)
