@@ -3,7 +3,6 @@ from OpenGL.GL import *
 import numpy as np
 import glm
 import ctypes
-import pywavefront
 from vertex_models import *
 
 
@@ -143,7 +142,7 @@ def main():
     # vao2, vbo2 = setup_model(vertices_np)
 
     # Load batched model
-    vertices_np, draw_commands = load_model_batched("Porsche_911_GT2.obj")
+    vertices_np, draw_commands = load_model_batched("objects/Porsche_911_GT2.obj")
     if vertices_np is None:
         print("Failed to load model, terminating.")
         glfw.terminate()
