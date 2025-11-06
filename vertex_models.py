@@ -62,46 +62,61 @@ def triangle_vertices():
          0.0,  0.5, 0.0,     0.0, 0.0, 1.0,
     ], dtype=np.float32)
 
-def load_model(path):
+def load_model_batched(path):
+    """Reads whole model and arranges data in fromat [pos_x, pos_y, pos_z, norm_x, norm_y, norm_z] """
+    all_vertex_data = []
+    draw_commands = []  # (start_index, vertex_count)
+    current_vertex_index = 0
+
     try:
-        # scene = pywavefront.Wavefront("car.obj", create_materials=True, parse=True)
         scene = pywavefront.Wavefront(path, create_materials=True, parse=True)
 
-        mesh = list(scene.meshes.values())[0]
+        for mesh in scene.meshes.values():
+            for material in mesh.materials:
 
-        if not mesh.materials:
-            raise Exception("cannot read vertices")
+                data = material.vertices
+                vfs = material.vertex_format
 
-        material = mesh.materials[0]
+                format_parts = vfs.split('_')
+                offsets = {}
+                current_offset = 0
+                for part in format_parts:
+                    offsets[part] = current_offset
+                    if part == 'T2F': current_offset += 2
+                    elif part == 'T3F': current_offset += 3
+                    elif part == 'C3F': current_offset += 3
+                    elif part == 'N3F': current_offset += 3
+                    elif part == 'V3F': current_offset += 3
 
-        data = material.vertices
-        vertex_format_string = material.vertex_format
+                vertex_format_size = current_offset
 
-        vertex_format_size = 0
-        if "T2F" in vertex_format_string:
-            vertex_format_size += 2
-        if "T3F" in vertex_format_string:
-            vertex_format_size += 3
-        if "C3F" in vertex_format_string:
-            vertex_format_size += 3
-        if "N3F" in vertex_format_string:
-            vertex_format_size += 3
-        if "V3F" in vertex_format_string:
-            vertex_format_size += 3
+                pos_offset = offsets['V3F']
+                norm_offset = offsets['N3F']
 
-        if vertex_format_size == 0 or "V3F" not in vertex_format_string:
-            raise Exception("Cannot find position data (V3F) in a model")
+                vertex_count_for_this_material = 0
 
-        positions = []
-        for i in range(0, len(data), vertex_format_size):
-            positions.append(data[i + vertex_format_size - 3])  # v_x
-            positions.append(data[i + vertex_format_size - 2])  # v_y
-            positions.append(data[i + vertex_format_size - 1])  # v_z
+                for i in range(0, len(data), vertex_format_size):
+                    all_vertex_data.append(data[i + pos_offset])     # px
+                    all_vertex_data.append(data[i + pos_offset + 1]) # py
+                    all_vertex_data.append(data[i + pos_offset + 2]) # pz
 
-        vertices_np = np.array(positions, dtype=np.float32)
-        vertex_count = len(positions) // 3
+                    all_vertex_data.append(data[i + norm_offset])     # nx
+                    all_vertex_data.append(data[i + norm_offset + 1]) # ny
+                    all_vertex_data.append(data[i + norm_offset + 2]) # nz
+
+                    vertex_count_for_this_material += 1
+
+                draw_commands.append( (current_vertex_index, vertex_count_for_this_material) )
+                current_vertex_index += vertex_count_for_this_material
+
+        if not all_vertex_data:
+            raise Exception("Error loading vertices")
+
+        vertices_np = np.array(all_vertex_data, dtype=np.float32)
+
+        return vertices_np, draw_commands
 
     except Exception as e:
         print(f"Error reading the model: {e}")
         glfw.terminate()
-        return vertex_count, vertices_np
+        return None, None

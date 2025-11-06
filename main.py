@@ -88,6 +88,26 @@ def render_model(shader, vao, vertex_count, model, view, projection):
     glBindVertexArray(0)
     return
 
+def render_complex_model(shader, vao, draw_commands, model, view, projection):
+    """Renders a complex (batched) model using draw commands."""
+    glUseProgram(shader)
+
+    # Set uniforms
+    normalMatrix = glm.transpose(glm.inverse(glm.mat3(model)))
+    glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, glm.value_ptr(model))
+    glUniformMatrix4fv(glGetUniformLocation(shader, "view"), 1, GL_FALSE, glm.value_ptr(view))
+    glUniformMatrix4fv(glGetUniformLocation(shader, "projection"), 1, GL_FALSE, glm.value_ptr(projection))
+    glUniformMatrix3fv(glGetUniformLocation(shader, "normalMatrix"), 1, GL_FALSE, glm.value_ptr(normalMatrix))
+
+    glBindVertexArray(vao)
+
+
+    for start_index, vertex_count in draw_commands:
+        glDrawArrays(GL_TRIANGLES, start_index, vertex_count)
+
+    glBindVertexArray(0)
+    return
+
 def main():
     if not glfw.init():
         print("Cannot initiate GLFW")
@@ -116,11 +136,20 @@ def main():
 
     #TODO: use load_model function from vertex_models file
     # vertex_count, vertices_np = load_model("car.obj")
-    vertices_np = cube_vertices()
-    vertex_count = 36
+    # vertices_np = cube_vertices()
+    # vertex_count = 36
+    #
+    # vao1, vbo1 = setup_model(vertices_np)
+    # vao2, vbo2 = setup_model(vertices_np)
 
-    vao1, vbo1 = setup_model(vertices_np)
-    vao2, vbo2 = setup_model(vertices_np)
+    # Load batched model
+    vertices_np, draw_commands = load_model_batched("Porsche_911_GT2.obj")
+    if vertices_np is None:
+        print("Failed to load model, terminating.")
+        glfw.terminate()
+        return
+    car_vao, car_vbo = setup_model(vertices_np)
+
 
     glClearColor(0.1, 0.1, 0.1, 1.0)
 
@@ -155,33 +184,49 @@ def main():
         # handle window resize
         fb_w, fb_h = glfw.get_framebuffer_size(window)
         glViewport(0, 0, fb_w, fb_h)
+        # Update projection matrix on resize
+        projection = glm.perspective(glm.radians(45.0), fb_w / fb_h if fb_h != 0 else 4/3, 0.1, 100.0)
+
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         time_val = glfw.get_time()
 
-        # First cube
-        model1 = glm.mat4(1.0)
-        model1 = glm.translate(model1, glm.vec3(-0.5, 0.0, 0.0))
-        model1 = glm.rotate(model1, time_val, glm.vec3(0.0, 1.0, 0.0))
-        model1 = glm.scale(model1, glm.vec3(0.5))
+        # # First cube
+        # model1 = glm.mat4(1.0)
+        # model1 = glm.translate(model1, glm.vec3(-0.5, 0.0, 0.0))
+        # model1 = glm.rotate(model1, time_val, glm.vec3(0.0, 1.0, 0.0))
+        # model1 = glm.scale(model1, glm.vec3(0.5))
+        #
+        # # Second cube
+        # model2 = glm.mat4(1.0)
+        # model2 = glm.translate(model2, glm.vec3(0.5, 0.0, 0.0))
+        # model2 = glm.rotate(model2, -time_val, glm.vec3(1.0, 1.0, 0.0))
+        # model2 = glm.scale(model2, glm.vec3(0.3))
+        #
+        # render_model(shader_program, vao1, vertex_count, model1, view, projection)
+        # render_model(shader_program, vao2, vertex_count, model2, view, projection)
 
-        # Second cube
-        model2 = glm.mat4(1.0)
-        model2 = glm.translate(model2, glm.vec3(0.5, 0.0, 0.0))
-        model2 = glm.rotate(model2, -time_val, glm.vec3(1.0, 1.0, 0.0))
-        model2 = glm.scale(model2, glm.vec3(0.3))
+        # Render the batched car model
+        model_car = glm.mat4(1.0)
+        model_car = glm.translate(model_car, glm.vec3(0.0, -0.5, 0.0))
+        model_car = glm.rotate(model_car, time_val * glm.radians(45.0), glm.vec3(0.0, 1.0, 0.0))
+        model_car = glm.scale(model_car, glm.vec3(0.2))
 
-        render_model(shader_program, vao1, vertex_count, model1, view, projection)
-        render_model(shader_program, vao2, vertex_count, model2, view, projection)
+        render_complex_model(shader_program, car_vao, draw_commands, model_car, view, projection)
+
 
         glfw.swap_buffers(window)
         glfw.poll_events()
 
-    glDeleteVertexArrays(1, [vao1])
-    glDeleteBuffers(1, [vbo1])
-    glDeleteVertexArrays(1, [vao2])
-    glDeleteBuffers(1, [vbo2])
+    # glDeleteVertexArrays(1, [vao1])
+    # glDeleteBuffers(1, [vbo1])
+    # glDeleteVertexArrays(1, [vao2])
+    # glDeleteBuffers(1, [vbo2])
+
+    glDeleteVertexArrays(1, [car_vao])
+    glDeleteBuffers(1, [car_vbo])
+
     glDeleteProgram(shader_program)
 
     glfw.terminate()
