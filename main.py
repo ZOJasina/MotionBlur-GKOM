@@ -4,6 +4,7 @@ import numpy as np
 import glm
 import ctypes
 import pywavefront
+from vertex_models import *
 
 
 def load_shader(shader_file, shader_type):
@@ -50,66 +51,6 @@ def create_shader_program(vertex_file, fragment_file):
 
     return program
 
-def cube_vertices():
-    return np.array([
-        # positions         # normals
-        # front face
-        -0.5, -0.5,  0.5,    0.0,  0.0,  1.0,
-         0.5, -0.5,  0.5,    0.0,  0.0,  1.0,
-         0.5,  0.5,  0.5,    0.0,  0.0,  1.0,
-         0.5,  0.5,  0.5,    0.0,  0.0,  1.0,
-        -0.5,  0.5,  0.5,    0.0,  0.0,  1.0,
-        -0.5, -0.5,  0.5,    0.0,  0.0,  1.0,
-
-        # back face
-        -0.5, -0.5, -0.5,    0.0,  0.0, -1.0,
-        -0.5,  0.5, -0.5,    0.0,  0.0, -1.0,
-         0.5,  0.5, -0.5,    0.0,  0.0, -1.0,
-         0.5,  0.5, -0.5,    0.0,  0.0, -1.0,
-         0.5, -0.5, -0.5,    0.0,  0.0, -1.0,
-        -0.5, -0.5, -0.5,    0.0,  0.0, -1.0,
-
-        # left face
-        -0.5,  0.5,  0.5,   -1.0,  0.0,  0.0,
-        -0.5,  0.5, -0.5,   -1.0,  0.0,  0.0,
-        -0.5, -0.5, -0.5,   -1.0,  0.0,  0.0,
-        -0.5, -0.5, -0.5,   -1.0,  0.0,  0.0,
-        -0.5, -0.5,  0.5,   -1.0,  0.0,  0.0,
-        -0.5,  0.5,  0.5,   -1.0,  0.0,  0.0,
-
-        # right face
-         0.5,  0.5,  0.5,    1.0,  0.0,  0.0,
-         0.5, -0.5, -0.5,    1.0,  0.0,  0.0,
-         0.5,  0.5, -0.5,    1.0,  0.0,  0.0,
-         0.5, -0.5, -0.5,    1.0,  0.0,  0.0,
-         0.5,  0.5,  0.5,    1.0,  0.0,  0.0,
-         0.5, -0.5,  0.5,    1.0,  0.0,  0.0,
-
-        # bottom face
-        -0.5, -0.5, -0.5,    0.0, -1.0,  0.0,
-         0.5, -0.5, -0.5,    0.0, -1.0,  0.0,
-         0.5, -0.5,  0.5,    0.0, -1.0,  0.0,
-         0.5, -0.5,  0.5,    0.0, -1.0,  0.0,
-        -0.5, -0.5,  0.5,    0.0, -1.0,  0.0,
-        -0.5, -0.5, -0.5,    0.0, -1.0,  0.0,
-
-        # top face
-        -0.5,  0.5, -0.5,    0.0,  1.0,  0.0,
-        -0.5,  0.5,  0.5,    0.0,  1.0,  0.0,
-         0.5,  0.5,  0.5,    0.0,  1.0,  0.0,
-         0.5,  0.5,  0.5,    0.0,  1.0,  0.0,
-         0.5,  0.5, -0.5,    0.0,  1.0,  0.0,
-        -0.5,  0.5, -0.5,    0.0,  1.0,  0.0
-    ], dtype=np.float32)
-
-def triangle_vertices():
-    return np.array([
-        #  pos               normal
-        -0.5, -0.5, 0.0,     0.0, 0.0, 1.0,
-         0.5, -0.5, 0.0,     0.0, 0.0, 1.0,
-         0.0,  0.5, 0.0,     0.0, 0.0, 1.0,
-    ], dtype=np.float32)
-
 
 def main():
     if not glfw.init():
@@ -128,49 +69,6 @@ def main():
 
     glfw.make_context_current(window)
 
-    # try:
-    #     scene = pywavefront.Wavefront("car.obj", create_materials=True, parse=True)
-
-    #     mesh = list(scene.meshes.values())[0]
-
-    #     if not mesh.materials:
-    #         raise Exception("cannot read vertices")
-
-    #     material = mesh.materials[0]
-
-    #     data = material.vertices
-    #     vertex_format_string = material.vertex_format
-
-    #     vertex_format_size = 0
-    #     if "T2F" in vertex_format_string:
-    #         vertex_format_size += 2
-    #     if "T3F" in vertex_format_string:
-    #         vertex_format_size += 3
-    #     if "C3F" in vertex_format_string:
-    #         vertex_format_size += 3
-    #     if "N3F" in vertex_format_string:
-    #         vertex_format_size += 3
-    #     if "V3F" in vertex_format_string:
-    #         vertex_format_size += 3
-
-    #     if vertex_format_size == 0 or "V3F" not in vertex_format_string:
-    #         raise Exception("Cannot find position data (V3F) in a model")
-
-    #     positions = []
-    #     for i in range(0, len(data), vertex_format_size):
-    #         positions.append(data[i + vertex_format_size - 3])  # v_x
-    #         positions.append(data[i + vertex_format_size - 2])  # v_y
-    #         positions.append(data[i + vertex_format_size - 1])  # v_z
-
-    #     vertices_np = np.array(positions, dtype=np.float32)
-    #     vertex_count = len(positions) // 3
-
-    # except Exception as e:
-    #     print(f"Error reading the model: {e}")
-    #     glfw.terminate()
-    #     return
-
-    # shader_program = create_shader_program("simple.vert", "simple.frag")
     shader_program = create_shader_program("phong.vert", "phong.frag")
     glEnable(GL_DEPTH_TEST)
     if not shader_program:
@@ -182,7 +80,10 @@ def main():
     vao = glGenVertexArrays(1)
     glBindVertexArray(vao)
 
+    #TODO: use load_model function from vertex_models file
+    # vertex_count, vertices_np = load_model("car.obj")
     vertices_np = cube_vertices()
+    vertex_count = 36
 
     vbo = glGenBuffers(1)
     glBindBuffer(GL_ARRAY_BUFFER, vbo)
@@ -200,7 +101,7 @@ def main():
     glEnable(GL_DEPTH_TEST)
     glClearColor(0.1, 0.1, 0.1, 1.0)
 
-    # Ustawienia światła i kamery
+    # Set up light and camera
     glUseProgram(shader_program)
     model = glm.mat4(1.0)
     view = glm.lookAt(glm.vec3(0, 0, 2), glm.vec3(0, 0, 0), glm.vec3(0, 1, 0))
@@ -271,9 +172,6 @@ def main():
         glUniformMatrix4fv(mvp_location, 1, GL_FALSE, glm.value_ptr(mvp))
 
         glBindVertexArray(vao)
-
-        # TODO
-        vertex_count = 36
 
         glDrawArrays(GL_TRIANGLES, 0, vertex_count)
 
