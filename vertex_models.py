@@ -1,6 +1,8 @@
 import glfw
 import numpy as np
 import pywavefront
+import logging
+pywavefront.configure_logging(logging.ERROR)
 
 def cube_vertices():
     return np.array([

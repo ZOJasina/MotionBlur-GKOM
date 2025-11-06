@@ -1,9 +1,7 @@
 import glfw
 from OpenGL.GL import *
-import numpy as np
 import glm
 import ctypes
-import pywavefront
 from vertex_models import *
 
 
@@ -108,6 +106,15 @@ def render_complex_model(shader, vao, draw_commands, model, view, projection):
     glBindVertexArray(0)
     return
 
+def load_model(path):
+    vertices_np, draw_commands = load_model_batched(path)
+    if vertices_np is None:
+        print("Failed to load model, terminating.")
+        glfw.terminate()
+        return
+    vao, vbo = setup_model(vertices_np)
+    return vao, vbo, draw_commands
+
 def main():
     if not glfw.init():
         print("Cannot initiate GLFW")
@@ -131,25 +138,11 @@ def main():
         glfw.terminate()
         return
 
-    mvp_location = glGetUniformLocation(shader_program, "u_mvp")
-
-
-    #TODO: use load_model function from vertex_models file
-    # vertex_count, vertices_np = load_model("car.obj")
-    # vertices_np = cube_vertices()
-    # vertex_count = 36
-    #
-    # vao1, vbo1 = setup_model(vertices_np)
-    # vao2, vbo2 = setup_model(vertices_np)
-
     # Load batched model
-    vertices_np, draw_commands = load_model_batched("Porsche_911_GT2.obj")
-    if vertices_np is None:
-        print("Failed to load model, terminating.")
-        glfw.terminate()
-        return
-    car_vao, car_vbo = setup_model(vertices_np)
-
+    car_vao, car_vbo, car_draw_commands = load_model("objects/Porsche_911_GT2.obj")
+    road_vao, road_vbo, road_draw_commands = load_model("objects/straight_road.obj")
+    pine_tree_left_vao, pine_tree_left_vbo, pine_tree_left_draw_commands = load_model("objects/pine_tree.obj")
+    green_tree_right_vao, green_tree_right_vbo, green_tree_right_draw_commands = load_model("objects/green_tree.obj")
 
     glClearColor(0.1, 0.1, 0.1, 1.0)
 
@@ -192,40 +185,46 @@ def main():
 
         time_val = glfw.get_time()
 
-        # # First cube
-        # model1 = glm.mat4(1.0)
-        # model1 = glm.translate(model1, glm.vec3(-0.5, 0.0, 0.0))
-        # model1 = glm.rotate(model1, time_val, glm.vec3(0.0, 1.0, 0.0))
-        # model1 = glm.scale(model1, glm.vec3(0.5))
-        #
-        # # Second cube
-        # model2 = glm.mat4(1.0)
-        # model2 = glm.translate(model2, glm.vec3(0.5, 0.0, 0.0))
-        # model2 = glm.rotate(model2, -time_val, glm.vec3(1.0, 1.0, 0.0))
-        # model2 = glm.scale(model2, glm.vec3(0.3))
-        #
-        # render_model(shader_program, vao1, vertex_count, model1, view, projection)
-        # render_model(shader_program, vao2, vertex_count, model2, view, projection)
-
         # Render the batched car model
         model_car = glm.mat4(1.0)
-        model_car = glm.translate(model_car, glm.vec3(0.0, -0.5, 0.0))
-        model_car = glm.rotate(model_car, time_val * glm.radians(45.0), glm.vec3(0.0, 1.0, 0.0))
+        model_car = glm.translate(model_car, glm.vec3(-0.1, -0.35, 0.0))
+        # model_car = glm.rotate(model_car, time_val * glm.radians(45.0), glm.vec3(0.0, 1.0, 0.0))
         model_car = glm.scale(model_car, glm.vec3(0.2))
+        render_complex_model(shader_program, car_vao, car_draw_commands, model_car, view, projection)
 
-        render_complex_model(shader_program, car_vao, draw_commands, model_car, view, projection)
+        # Render the batched road model
+        model_road = glm.mat4(1.0)
+        model_road = glm.translate(model_road, glm.vec3(0.0, -0.5, 0.0))
+        # model_road = glm.rotate(model_road, time_val * glm.radians(45.0), glm.vec3(0.0, 1.0, 0.0))
+        model_road = glm.scale(model_road, glm.vec3(0.2))
+        render_complex_model(shader_program, road_vao, road_draw_commands, model_road, view, projection)
+
+        # Render the batched left pine tree model
+        model_pine_tree_left = glm.mat4(1.0)
+        model_pine_tree_left = glm.translate(model_pine_tree_left, glm.vec3(-0.7, -0.5, -1.0))
+        # model_pine_tree_left = glm.rotate(model_pine_tree_left, time_val * glm.radians(45.0), glm.vec3(0.0, 1.0, 0.0))
+        model_pine_tree_left = glm.scale(model_pine_tree_left, glm.vec3(0.15))
+        render_complex_model(shader_program, pine_tree_left_vao, pine_tree_left_draw_commands, model_pine_tree_left, view, projection)
+
+        # Render the batched right green tree model
+        model_green_tree_right = glm.mat4(1.0)
+        model_green_tree_right = glm.translate(model_green_tree_right, glm.vec3(0.5, -0.5, 0.0))
+        # model_green_tree_right = glm.rotate(model_green_tree_right, time_val * glm.radians(45.0), glm.vec3(0.0, 1.0, 0.0))
+        model_green_tree_right = glm.scale(model_green_tree_right, glm.vec3(0.2))
+        render_complex_model(shader_program, green_tree_right_vao, road_draw_commands, model_green_tree_right, view, projection)
 
 
         glfw.swap_buffers(window)
         glfw.poll_events()
 
-    # glDeleteVertexArrays(1, [vao1])
-    # glDeleteBuffers(1, [vbo1])
-    # glDeleteVertexArrays(1, [vao2])
-    # glDeleteBuffers(1, [vbo2])
-
     glDeleteVertexArrays(1, [car_vao])
     glDeleteBuffers(1, [car_vbo])
+    glDeleteVertexArrays(1, [road_vao])
+    glDeleteBuffers(1, [road_vbo])
+    glDeleteVertexArrays(1, [pine_tree_left_vao])
+    glDeleteBuffers(1, [pine_tree_left_vbo])
+    glDeleteVertexArrays(1, [green_tree_right_vao])
+    glDeleteBuffers(1, [green_tree_right_vbo])
 
     glDeleteProgram(shader_program)
 
