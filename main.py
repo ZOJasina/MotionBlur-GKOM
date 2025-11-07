@@ -176,6 +176,14 @@ def main():
     car = Car(initial_position=glm.vec3(-0.1, -0.35, 0.0))
     previous_time = glfw.get_time() # Czas ostatniej klatki
 
+    # Camera Mode
+    camera_mode = 0  # 0: 3rd POV, 1: 1st POV
+    def key_callback(window, key, scancode, action, mods):
+        nonlocal camera_mode, height_offset
+        if key == glfw.KEY_C and action == glfw.PRESS:
+            camera_mode = 1 - camera_mode
+    glfw.set_key_callback(window, key_callback)
+
     # Main loop
     while not glfw.window_should_close(window):
         # handle window resize
@@ -193,15 +201,19 @@ def main():
 
         # === CAMERA ===
         up = glm.vec3(0.0, 1.0, 0.0)
-
-        forward_x = -glm.sin(car.angle)
-        forward_z = -glm.cos(car.angle)
+        forward_x, forward_z = -glm.sin(car.angle), -glm.cos(car.angle)
         forward_vector = glm.vec3(forward_x, 0.0, forward_z)
-        backward_vector = -forward_vector
 
-        distance_behind, height_above = 2.0, 0.5
-        eye = car.position + (backward_vector * distance_behind) + glm.vec3(0.0, height_above, 0.0)
-        center = car.position + (forward_vector * 1.0)
+        if camera_mode == 0:
+            backward_vector = -forward_vector
+            distance_behind, height_above, look_ahead = 2.0, 0.5, 1.0
+            eye = car.position + (backward_vector * distance_behind) + glm.vec3(0.0, height_above, 0.0)
+            center = car.position + (forward_vector * look_ahead)
+        else:
+            right_vector = glm.vec3(-glm.cos(car.angle), 0.0, glm.sin(car.angle))
+            height_offset, right_offset, forward_offset, look_ahead = 0.08, 0.06, -0.075, 1.0
+            eye = car.position + glm.vec3(0.0, height_offset, 0.0) + (right_vector * right_offset) + (forward_vector * forward_offset)
+            center = eye + (forward_vector * look_ahead)
 
         view = glm.lookAt(eye, center, up)
 
