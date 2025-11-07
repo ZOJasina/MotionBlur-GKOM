@@ -13,21 +13,26 @@ razy - brak pierwszej prezentacji uniemożliwia oddanie projektu.
 * Oddanie ostatecznej wersji programu 23.01.2026
 
 ## Motion blur
+### Przypisanie zadań gdzie:
+* Weronika Maślana (W)
+* Zosia Jasina (Z)
+* Maciek Kaniewski (M)
+
 ### Prowadzący: dr inż. Łukasz Dąbała
 W ramach projektu należy stworzyć prostą grę wyścigową, w której dodany
 zostanie motion-blur
 * 1. wsparcie dla różnego typu plików wejściowych z modelem 3D: obj. Intere-
-suje nas wczytanie trasy, modelu samochodu oraz jego wnętrza.
-* 2. cieniowanie Phonga
-* 3. interpretację właściwości materiału: diffuse, specular
-* 4. wsparcie dla tekstur typu diffuse, specular
-* 5. wsparcie dla świateł punktowych - wystarczy pojedyncze światło
-* 6. kamerę perspektywiczną
+suje nas wczytanie trasy, modelu samochodu oraz jego wnętrza. (M)
+* 2. cieniowanie Phonga (W)
+* 3. interpretację właściwości materiału: diffuse, specular (W)
+* 4. wsparcie dla tekstur typu diffuse, specular (M)
+* 5. wsparcie dla świateł punktowych - wystarczy pojedyncze światło (Z)
+* 6. kamerę perspektywiczną (Z)
 ** (a) przeczepioną do wnętrza samochodu (możliwość kierowania z pierw-
 szej osoby)
 ** (b) przyczepioną nad tyłem samochodu (możliwość kierowania z trzeciej
 osoby)
-* 7. efekt motion-blur
+* 7. efekt motion-blur (W)
 **(a) obiekty powinny rozmazywać się wraz z ruchem
 **(b) należy uwzględnić odległość od obiektów - obiekty bliższe rozmazują
 się bardziej niż dalsze
