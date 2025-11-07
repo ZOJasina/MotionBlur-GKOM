@@ -3,7 +3,7 @@ from OpenGL.GL import *
 import glm
 import ctypes
 from vertex_models import *
-
+from car import Car
 
 def load_shader(shader_file, shader_type):
     """reads and compiles shader from file"""
@@ -172,6 +172,10 @@ def main():
     glUniform3f(uni("light.diffuse"), 0.8, 0.8, 0.8)
     glUniform3f(uni("light.specular"), 1.0, 1.0, 1.0)
 
+    # Car
+    car = Car(initial_position=glm.vec3(-0.1, -0.35, 0.0))
+    previous_time = glfw.get_time() # Czas ostatniej klatki
+
     # Main loop
     while not glfw.window_should_close(window):
         # handle window resize
@@ -180,20 +184,36 @@ def main():
         # Update projection matrix on resize
         projection = glm.perspective(glm.radians(45.0), fb_w / fb_h if fb_h != 0 else 4/3, 0.1, 100.0)
 
-
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         time_val = glfw.get_time()
+        delta_time = time_val - previous_time
+        previous_time = time_val
+        car.update(window, delta_time)
+
+        # === CAMERA ===
+        up = glm.vec3(0.0, 1.0, 0.0)
+
+        forward_x = -glm.sin(car.angle)
+        forward_z = -glm.cos(car.angle)
+        forward_vector = glm.vec3(forward_x, 0.0, forward_z)
+        backward_vector = -forward_vector
+
+        distance_behind, height_above = 2.0, 0.5
+        eye = car.position + (backward_vector * distance_behind) + glm.vec3(0.0, height_above, 0.0)
+        center = car.position + (forward_vector * 1.0)
+
+        view = glm.lookAt(eye, center, up)
 
         # === CAR ===
         glUniform3f(uni("material.diffuse"), 1.0, 0.1, 0.1)
         glUniform3f(uni("material.specular"), 0.9, 0.9, 0.9)
         glUniform1f(uni("material.shininess"), 64.0)
 
-        model_car = glm.mat4(1.0)
-        model_car = glm.translate(model_car, glm.vec3(-0.1, -0.35, 0.0))
+        model_car = car.get_model_matrix()
+        # model_car = glm.scale(model_car, glm.vec3(0.2))
         # model_car = glm.rotate(model_car, time_val * glm.radians(45.0), glm.vec3(0.0, 1.0, 0.0))
-        model_car = glm.scale(model_car, glm.vec3(0.2))
+        # model_car = glm.translate(model_car, glm.vec3(-0.1, -0.35, 0.0))
         render_complex_model(shader_program, car_vao, car_draw_commands, model_car, view, projection)
 
         # === ROAD ===
