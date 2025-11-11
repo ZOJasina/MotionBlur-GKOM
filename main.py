@@ -276,7 +276,7 @@ def main():
     default_texture = create_default_texture()
 
     # Load batched model
-    car3d = load_model("objects/Porsche_911_GT2.obj").set_material(specular=[0.9, 0.9, 0.9], shininess=64.0)
+    car3d = load_model("objects/vehicle-racer.obj").set_material(specular=[0.9, 0.9, 0.9], shininess=64.0)
     road = (load_model("objects/straight_road.obj")
             .set_material( specular=[0.1, 0.1, 0.1], shininess=8.0)
             .translate(0.0, -0.5, 0.0)
