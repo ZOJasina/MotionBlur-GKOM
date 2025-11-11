@@ -268,6 +268,7 @@ def initialize_window():
         return
     return window, shader_program
 
+
 def main():
     window, shader_program = initialize_window()
     if not window:
@@ -293,23 +294,29 @@ def main():
 
     glClearColor(0.1, 0.1, 0.1, 1.0)
 
-    # Set up light and camera
+    # Camera
     glUseProgram(shader_program)
     view = glm.lookAt(glm.vec3(0, 0, 2), glm.vec3(0, 0, 0), glm.vec3(0, 1, 0))
     fb_w, fb_h = glfw.get_framebuffer_size(window)
     projection = glm.perspective(glm.radians(45.0), fb_w / fb_h if fb_h != 0 else 4/3, 0.1, 100.0)
+    # Camera Mode
+    camera_mode = 0  # 0: 3rd POV, 1: 1st POV
+    def key_callback(window, key, scancode, action, mods):
+        nonlocal camera_mode
+        if key == glfw.KEY_C and action == glfw.PRESS:
+            camera_mode = 1 - camera_mode
+    glfw.set_key_callback(window, key_callback)
 
+    # Light
     def uni(name):
         loc = glGetUniformLocation(shader_program, name)
         if loc == -1:
             print(f"Warning: uniform '{name}' not found (location = -1). Maybe it's optimized out or name mismatch.")
         return loc
 
-
     glUniform3f(uni("lightPos"), 1.2, 1.0, 2.0)
     glUniform3f(uni("viewPos"), 0.0, 0.0, 2.0)
 
-    # Light
     glUniform3f(uni("light.ambient"), 0.2, 0.2, 0.2)
     glUniform3f(uni("light.diffuse"), 0.8, 0.8, 0.8)
     glUniform3f(uni("light.specular"), 1.0, 1.0, 1.0)
@@ -318,14 +325,6 @@ def main():
     car = Car(initial_position=glm.vec3(-0.1, -0.35, 0.0))
     previous_time = glfw.get_time()
     car.prev_position = glm.vec3(car.position)
-
-    # Camera Mode
-    camera_mode = 0  # 0: 3rd POV, 1: 1st POV
-    def key_callback(window, key, scancode, action, mods):
-        nonlocal camera_mode, height_offset
-        if key == glfw.KEY_C and action == glfw.PRESS:
-            camera_mode = 1 - camera_mode
-    glfw.set_key_callback(window, key_callback)
 
     glEnable(GL_BLEND)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
@@ -362,7 +361,8 @@ def main():
             center = eye + (forward_vector * look_ahead)
 
         view = glm.lookAt(eye, center, up)
-        glUniform1f(glGetUniformLocation(shader_program, "u_alpha"), 1.0)
+        glUniform3f(uni("viewPos"), eye.x, eye.y, eye.z)
+        glUniform1f(uni("u_alpha"), 1.0)
 
         # === CAR ===
         car3d.prepare_material(shader_program)
@@ -391,7 +391,7 @@ def main():
                 obj_distance = glm.length(car.position - obj.get_position())
                 obj_offset = scene_velocity * step_fraction * motion_blur_factor * (1.0 / obj_distance)
                 view_obj_blur = glm.translate(view, -obj_offset)
-                glUniform1f(glGetUniformLocation(shader_program, "u_alpha"), alpha)
+                glUniform1f(uni("u_alpha"), alpha)
                 obj.prepare_material(shader_program)
                 render_complex_model(shader_program, obj.vao, obj.draw_commands, obj.get_trans_matrix(), view_obj_blur, projection, obj.texture_ids, default_texture)
 
