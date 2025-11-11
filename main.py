@@ -2,6 +2,7 @@ import glfw
 from OpenGL.GL import *
 import glm
 import ctypes
+from object3d import Object3D
 from vertex_models import *
 from car import Car
 
@@ -178,9 +179,9 @@ def load_model(path):
         glfw.terminate()
         return
     vao, vbo = setup_model(vertices_np)
-    return vao, vbo, draw_commands
+    return Object3D(vao, vbo, draw_commands)
 
-def main():
+def initialize_window():
     if not glfw.init():
         print("Cannot initiate GLFW")
         return
@@ -202,12 +203,28 @@ def main():
     if not shader_program:
         glfw.terminate()
         return
+    return window, shader_program
+
+def main():
+    window, shader_program = initialize_window()
+    if not window:
+        return
 
     # Load batched model
-    car_vao, car_vbo, car_draw_commands = load_model("objects/Porsche_911_GT2.obj")
-    road_vao, road_vbo, road_draw_commands = load_model("objects/straight_road.obj")
-    pine_tree_left_vao, pine_tree_left_vbo, pine_tree_left_draw_commands = load_model("objects/pine_tree.obj")
-    green_tree_right_vao, green_tree_right_vbo, green_tree_right_draw_commands = load_model("objects/green_tree.obj")
+    car3d = load_model("objects/Porsche_911_GT2.obj").set_material([1.0, 0.1, 0.1], [0.9, 0.9, 0.9],  64.0)
+    road = (load_model("objects/straight_road.obj")
+            .set_material([0.5, 0.5, 0.5], [0.1, 0.1, 0.1],  8.0)
+            .translate(0.0, -0.5, 0.0)
+            .scale(0.2))
+    pine_tree = (load_model("objects/pine_tree.obj")
+                 .set_material([0.0, 0.4, 0.0], [0.2, 0.2, 0.2],  16.0)
+                 .translate(-0.7, -0.5, -1.0)
+                 .scale(0.15))
+    green_tree = (load_model("objects/green_tree.obj")
+                  .set_material([0.2, 0.8, 0.2], [0.3, 0.3, 0.3],  32.0)
+                  .translate(0.5, -0.5, 0.0)
+                  .scale(0.2))
+    static_objects = [road, pine_tree, green_tree]
 
     glClearColor(0.1, 0.1, 0.1, 1.0)
 
@@ -223,20 +240,9 @@ def main():
             print(f"Warning: uniform '{name}' not found (location = -1). Maybe it's optimized out or name mismatch.")
         return loc
 
-    def set_material(diffuse, specular, shininess):
-        glUniform3f(uni("material.diffuse"), diffuse[0], diffuse[1], diffuse[2])
-        glUniform3f(uni("material.specular"), specular[0], specular[1], specular[2])
-        glUniform1f(uni("material.shininess"), shininess)
-        return
 
     glUniform3f(uni("lightPos"), 1.2, 1.0, 2.0)
     glUniform3f(uni("viewPos"), 0.0, 0.0, 2.0)
-
-    # Material
-    glUniform3f(uni("material.ambient"), 0.2, 0.2, 0.2)
-    glUniform3f(uni("material.diffuse"), 1.0, 0.5, 0.31)
-    glUniform3f(uni("material.specular"), 0.5, 0.5, 0.5)
-    glUniform1f(uni("material.shininess"), 32.0)
 
     # Light
     glUniform3f(uni("light.ambient"), 0.2, 0.2, 0.2)
@@ -291,43 +297,21 @@ def main():
             center = eye + (forward_vector * look_ahead)
 
         view = glm.lookAt(eye, center, up)
+        glUniform1f(glGetUniformLocation(shader_program, "u_alpha"), 1.0)
 
         # === CAR ===
-        set_material([1.0, 0.1, 0.1], [0.9, 0.9, 0.9],  64.0)
+        car3d.prepare_material(shader_program)
         model_car = car.get_model_matrix()
+        render_complex_model(shader_program, car3d.vao, car3d.draw_commands, model_car, view, projection)
 
-        # model_car = glm.scale(model_car, glm.vec3(0.2))
-        # model_car = glm.rotate(model_car, time_val * glm.radians(45.0), glm.vec3(0.0, 1.0, 0.0))
-        # model_car = glm.translate(model_car, glm.vec3(-0.1, -0.35, 0.0))
-        glUniform1f(glGetUniformLocation(shader_program, "u_alpha"), 1.0)
-        render_complex_model(shader_program, car_vao, car_draw_commands, model_car, view, projection)
+        pine_tree.prepare_material(shader_program)
+        render_complex_model(shader_program, pine_tree.vao, pine_tree.draw_commands, pine_tree.get_trans_matrix(), view, projection)
 
-         # === LEFT TREE (pine) ===
-        set_material([0.0, 0.4, 0.0], [0.2, 0.2, 0.2],  16.0)
+        green_tree.prepare_material(shader_program)
+        render_complex_model(shader_program, green_tree.vao, green_tree.draw_commands, green_tree.get_trans_matrix(), view, projection)
 
-        model_pine_tree_left = glm.mat4(1.0)
-        model_pine_tree_left = glm.translate(model_pine_tree_left, glm.vec3(-0.7, -0.5, -1.0))
-        # model_pine_tree_left = glm.rotate(model_pine_tree_left, time_val * glm.radians(45.0), glm.vec3(0.0, 1.0, 0.0))
-        model_pine_tree_left = glm.scale(model_pine_tree_left, glm.vec3(0.15))
-        render_complex_model(shader_program, pine_tree_left_vao, pine_tree_left_draw_commands, model_pine_tree_left, view, projection)
-
-        # === RIGHT TREE (green) ===
-        set_material([0.2, 0.8, 0.2], [0.3, 0.3, 0.3],  32.0)
-
-        model_green_tree_right = glm.mat4(0.3)
-        model_green_tree_right = glm.translate(model_green_tree_right, glm.vec3(0.5, -0.5, 0.0))
-        # model_green_tree_right = glm.rotate(model_green_tree_right, time_val * glm.radians(45.0), glm.vec3(0.0, 1.0, 0.0))
-        model_green_tree_right = glm.scale(model_green_tree_right, glm.vec3(0.2))
-        render_complex_model(shader_program, green_tree_right_vao, green_tree_right_draw_commands, model_green_tree_right, view, projection)
-
-        # === ROAD ===
-        set_material([0.5, 0.5, 0.5], [0.1, 0.1, 0.1],  8.0)
-
-        model_road = glm.mat4(1.0)
-        model_road = glm.translate(model_road, glm.vec3(0.0, -0.5, 0.0))
-        # model_road = glm.rotate(model_road, time_val * glm.radians(45.0), glm.vec3(0.0, 1.0, 0.0))
-        model_road = glm.scale(model_road, glm.vec3(0.2))
-        render_complex_model(shader_program, road_vao, road_draw_commands, model_road, view, projection)
+        road.prepare_material(shader_program)
+        render_complex_model(shader_program, road.vao, road.draw_commands, road.get_trans_matrix(), view, projection)
 
         # ===MOTION BLUR ===
         scene_velocity = car.position - car.prev_position
@@ -338,44 +322,18 @@ def main():
             alpha = 1.0 / blur_steps
             step_fraction = i / blur_steps
 
-            # ROAD
-            distance_road = glm.length(car.position - glm.vec3(0.0, -0.5, 0.0))
-            road_offset = scene_velocity * step_fraction * motion_blur_factor * (1.0 / distance_road)
-            view_road_blur = glm.translate(view, -road_offset)
-            glUniform1f(glGetUniformLocation(shader_program, "u_alpha"), alpha)
-            set_material([0.5, 0.5, 0.5], [0.1, 0.1, 0.1],  8.0)
-            render_complex_model(shader_program, road_vao, road_draw_commands, model_road, view_road_blur, projection)
-
-            # LEFT TREE
-            distance_pine = glm.length(car.position - glm.vec3(-0.7, -0.5, -1.0))
-            pine_offset = scene_velocity * step_fraction * motion_blur_factor * (1.0 / distance_pine)
-            view_pine_blur = glm.translate(view, -pine_offset)
-            glUniform1f(glGetUniformLocation(shader_program, "u_alpha"), alpha)
-            set_material([0.0, 0.4, 0.0], [0.2, 0.2, 0.2],  16.0)
-            render_complex_model(shader_program, pine_tree_left_vao, pine_tree_left_draw_commands, model_pine_tree_left, view_pine_blur, projection)
-
-            # RIGHT TREE
-            distance_green = glm.length(car.position - glm.vec3(0.5, -0.5, 0.0))
-            green_offset = scene_velocity * step_fraction * motion_blur_factor * (1.0 / distance_green)
-            view_green_blur = glm.translate(view, -green_offset)
-            glUniform1f(glGetUniformLocation(shader_program, "u_alpha"), alpha)
-            set_material([0.2, 0.8, 0.2], [0.3, 0.3, 0.3],  32.0)
-            render_complex_model(shader_program, green_tree_right_vao, green_tree_right_draw_commands, model_green_tree_right, view_green_blur, projection)
+            for obj in static_objects:
+                obj_distance = glm.length(car.position - obj.get_position())
+                obj_offset = scene_velocity * step_fraction * motion_blur_factor * (1.0 / obj_distance)
+                view_obj_blur = glm.translate(view, -obj_offset)
+                glUniform1f(glGetUniformLocation(shader_program, "u_alpha"), alpha)
+                obj.prepare_material(shader_program)
+                render_complex_model(shader_program, obj.vao, obj.draw_commands, obj.get_trans_matrix(), view_obj_blur, projection)
 
         glfw.swap_buffers(window)
         glfw.poll_events()
 
-    glDeleteVertexArrays(1, [car_vao])
-    glDeleteBuffers(1, [car_vbo])
-    glDeleteVertexArrays(1, [road_vao])
-    glDeleteBuffers(1, [road_vbo])
-    glDeleteVertexArrays(1, [pine_tree_left_vao])
-    glDeleteBuffers(1, [pine_tree_left_vbo])
-    glDeleteVertexArrays(1, [green_tree_right_vao])
-    glDeleteBuffers(1, [green_tree_right_vbo])
-
     glDeleteProgram(shader_program)
-
     glfw.terminate()
 
 
