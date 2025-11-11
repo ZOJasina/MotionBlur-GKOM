@@ -106,6 +106,71 @@ def render_complex_model(shader, vao, draw_commands, model, view, projection):
     glBindVertexArray(0)
     return
 
+def render_motion_blur_model(shader, vao, draw_commands, model, view, projection,
+                             velocity_world, samples=8, decay=0.75, base_alpha=0.9):
+    """
+    Object-space motion blur:
+    - shader: program
+    - vao, draw_commands: geometry
+    - model, view, projection: glm mats
+    - velocity_world: glm.vec3, world-space displacement per frame (current_pos - prev_pos)
+    - samples: number of blur samples (>=1). Higher = smoother but slower.
+    - decay: alpha decay per sample (0..1)
+    - base_alpha: starting alpha for first sample
+    """
+    if samples <= 1 or glm.length(velocity_world) == 0.0:
+        # No blur, just render normally
+        render_complex_model(shader, vao, draw_commands, model, view, projection)
+        return
+
+    # Enable blending and keep depth test active; but disable depth writes so blur doesn't occlude
+    glEnable(GL_BLEND)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+    glEnable(GL_DEPTH_TEST)
+    glDepthMask(GL_FALSE)  # don't write depth for blur passes
+
+    # Ensure shader active
+    glUseProgram(shader)
+
+    # Precompute uniform locations (could be cached for speed)
+    loc_model = glGetUniformLocation(shader, "model")
+    loc_view = glGetUniformLocation(shader, "view")
+    loc_proj = glGetUniformLocation(shader, "projection")
+    loc_normal = glGetUniformLocation(shader, "normalMatrix")
+    loc_alpha = glGetUniformLocation(shader, "u_alpha")
+
+    # For each sample, draw the object shifted slightly *backwards* along velocity
+    # so the smear trails behind motion.
+    for i in range(samples):
+        t = (i + 1) / float(samples)  # from 1/samples .. 1.0
+        offset = -velocity_world * t  # move backward along motion
+        # build transformed model: translate by offset in world space, then apply original model
+        # note: if your model matrix already contains translation, adding offset should be applied in world coords
+        model_i = glm.translate(glm.mat4(1.0), glm.vec3(offset)) * model
+
+        normalMatrix = glm.transpose(glm.inverse(glm.mat3(model_i)))
+
+        if loc_model != -1: glUniformMatrix4fv(loc_model, 1, GL_FALSE, glm.value_ptr(model_i))
+        if loc_view != -1: glUniformMatrix4fv(loc_view, 1, GL_FALSE, glm.value_ptr(view))
+        if loc_proj != -1: glUniformMatrix4fv(loc_proj, 1, GL_FALSE, glm.value_ptr(projection))
+        if loc_normal != -1: glUniformMatrix3fv(loc_normal, 1, GL_FALSE, glm.value_ptr(normalMatrix))
+
+        # compute alpha for this sample
+        alpha = base_alpha * (decay ** i)
+        if loc_alpha != -1:
+            glUniform1f(loc_alpha, float(alpha))
+
+        glBindVertexArray(vao)
+        for start_index, vcount in draw_commands:
+            glDrawArrays(GL_TRIANGLES, start_index, vcount)
+        glBindVertexArray(0)
+
+    # restore state
+    glDepthMask(GL_TRUE)
+    glDisable(GL_BLEND)
+    # note: keep depth test enabled (it was before)
+    return
+
 def load_model(path):
     vertices_np, draw_commands = load_model_batched(path)
     if vertices_np is None:
@@ -184,6 +249,9 @@ def main():
             camera_mode = 1 - camera_mode
     glfw.set_key_callback(window, key_callback)
 
+    glEnable(GL_BLEND)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
     # Main loop
     while not glfw.window_should_close(window):
         # handle window resize
@@ -198,6 +266,12 @@ def main():
         delta_time = time_val - previous_time
         previous_time = time_val
         car.update(window, delta_time)
+
+        scene_velocity = car.position - car.prev_position
+
+        # parametr intensywności rozmycia
+        motion_blur_factor = 10
+        blur_steps = 10
 
         # === CAMERA ===
         up = glm.vec3(0.0, 1.0, 0.0)
@@ -223,9 +297,11 @@ def main():
         glUniform1f(uni("material.shininess"), 64.0)
 
         model_car = car.get_model_matrix()
+
         # model_car = glm.scale(model_car, glm.vec3(0.2))
         # model_car = glm.rotate(model_car, time_val * glm.radians(45.0), glm.vec3(0.0, 1.0, 0.0))
         # model_car = glm.translate(model_car, glm.vec3(-0.1, -0.35, 0.0))
+        glUniform1f(glGetUniformLocation(shader_program, "u_alpha"), 1.0)
         render_complex_model(shader_program, car_vao, car_draw_commands, model_car, view, projection)
 
         # === ROAD ===
@@ -261,6 +337,16 @@ def main():
         model_green_tree_right = glm.scale(model_green_tree_right, glm.vec3(0.2))
         render_complex_model(shader_program, green_tree_right_vao, green_tree_right_draw_commands, model_green_tree_right, view, projection)
 
+        for i in range(blur_steps):
+            alpha = 1.0 / blur_steps
+            offset = scene_velocity * (i / blur_steps) * motion_blur_factor
+
+            view_blur = glm.translate(view, -offset)
+            glUniform1f(glGetUniformLocation(shader_program, "u_alpha"), alpha)
+
+            render_complex_model(shader_program, road_vao, road_draw_commands, model_road, view_blur, projection)
+            render_complex_model(shader_program, pine_tree_left_vao, pine_tree_left_draw_commands, model_pine_tree_left, view_blur, projection)
+            render_complex_model(shader_program, green_tree_right_vao, green_tree_right_draw_commands, model_green_tree_right, view_blur, projection)
 
         glfw.swap_buffers(window)
         glfw.poll_events()

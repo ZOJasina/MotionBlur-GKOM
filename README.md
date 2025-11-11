@@ -18,6 +18,10 @@ razy - brak pierwszej prezentacji uniemożliwia oddanie projektu.
 * Zosia Jasina (Z)
 * Maciek Kaniewski (M)
 
+### Instrukcja
+* C - zmień kamerę
+* WASD - poruszaj samochodem
+
 ### Prowadzący: dr inż. Łukasz Dąbała
 W ramach projektu należy stworzyć prostą grę wyścigową, w której dodany
 zostanie motion-blur

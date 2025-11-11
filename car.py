@@ -14,11 +14,14 @@ class Car:
 
         # state variables
         self.position = initial_position
+        self.prev_position = glm.vec3(initial_position)
         self.speed = 0.0            # units per second
         self.angle = 0.0            # radians (0.0 -> along the -Z)
 
     def update(self, window, delta_time):
         """Updates car state."""
+
+        self.prev_position = glm.vec3(self.position)
 
         is_accelerating = glfw.get_key(window, glfw.KEY_W) == glfw.PRESS
         is_braking = glfw.get_key(window, glfw.KEY_S) == glfw.PRESS
