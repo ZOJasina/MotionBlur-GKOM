@@ -2,7 +2,7 @@ from OpenGL.GL import *
 import glm
 
 class Object3D:
-    def __init__(self, vao, vbo, draw_commands):
+    def __init__(self, vao, vbo, draw_commands, texture_ids=[]):
         """
         Initialize a 3D object with required OpenGL identifiers.
 
@@ -14,10 +14,11 @@ class Object3D:
         self.vao = vao
         self.vbo = vbo
         self.draw_commands = draw_commands
+        self.texture_ids = texture_ids
         self.deleted = False  # to avoid double deletion
 
         # Material properties (default values)
-        self.diffuse = [1.0, 1.0, 1.0]    # RGB
+        self.diffuse = [1.0, 1.0, 1.0]    # RGB  #Don't override material.diffuse if we want to use textures
         self.specular = [1.0, 1.0, 1.0]   # RGB
         self.shininess = 32.0
         self.ambient = [0.1, 0.1, 0.1]    # RGB

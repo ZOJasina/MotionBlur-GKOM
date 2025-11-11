@@ -5,6 +5,10 @@ import ctypes
 from object3d import Object3D
 from vertex_models import *
 from car import Car
+from PIL import Image
+import numpy as np
+import os
+
 
 def load_shader(shader_file, shader_type):
     """reads and compiles shader from file"""
@@ -50,8 +54,81 @@ def create_shader_program(vertex_file, fragment_file):
 
     return program
 
+
+def create_default_texture():
+    """Creates a default white 1x1 texture."""
+    texture_id = glGenTextures(1)
+    if texture_id == 0:
+        print("Failed to generate default texture ID")
+        return None
+
+    glBindTexture(GL_TEXTURE_2D, texture_id)
+
+    white_pixel = np.array([255, 255, 255, 255], dtype=np.uint8)
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0,
+                 GL_RGBA, GL_UNSIGNED_BYTE, white_pixel)
+
+    glBindTexture(GL_TEXTURE_2D, 0)
+    return texture_id
+
+
+def load_texture(texture_path):
+    """Loads a texture from file and returns OpenGL texture ID."""
+    if not texture_path or not os.path.exists(texture_path):
+        print(f"Texture path does not exist: {texture_path}")
+        return None
+
+    try:
+        img = Image.open(texture_path)
+        if img.mode != 'RGBA':
+            img = img.convert('RGBA')
+
+        img_data = np.array(img, dtype=np.uint8)
+        width, height = img.size
+
+        img_data = np.flipud(img_data)
+
+        texture_id = glGenTextures(1)
+
+        glBindTexture(GL_TEXTURE_2D, texture_id)
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+                        GL_LINEAR_MIPMAP_LINEAR)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height,
+                     0, GL_RGBA, GL_UNSIGNED_BYTE, img_data)
+        glGenerateMipmap(GL_TEXTURE_2D)
+
+        error = glGetError()
+        if error != GL_NO_ERROR:
+            print(
+                f"OpenGL error after loading texture {texture_path}: {error}")
+            glDeleteTextures(1, [texture_id])
+            glBindTexture(GL_TEXTURE_2D, 0)
+            return None
+
+        glBindTexture(GL_TEXTURE_2D, 0)
+        print(
+            f"Successfully loaded texture: {texture_path} (ID: {texture_id})")
+        return texture_id
+
+    except Exception as e:
+        print(f"Error loading texture {texture_path}: {e}")
+        return None
+
+
 def setup_model(vertices_np):
-    """Creates VAO + VBO for given vertex array."""
+    """Creates VAO + VBO for given vertex array.
+    Expected format: [pos_x, pos_y, pos_z, norm_x, norm_y, norm_z, tex_u, tex_v] (8 floats per vertex)"""
     vao = glGenVertexArrays(1)
     glBindVertexArray(vao)
 
@@ -59,11 +136,13 @@ def setup_model(vertices_np):
     glBindBuffer(GL_ARRAY_BUFFER, vbo)
     glBufferData(GL_ARRAY_BUFFER, vertices_np.nbytes, vertices_np, GL_STATIC_DRAW)
 
-    stride = 6 * vertices_np.itemsize
+    stride = 8 * vertices_np.itemsize
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(0))
     glEnableVertexAttribArray(0)
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(12))
     glEnableVertexAttribArray(1)
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(24))
+    glEnableVertexAttribArray(2)
 
     glBindBuffer(GL_ARRAY_BUFFER, 0)
     glBindVertexArray(0)
@@ -87,8 +166,9 @@ def render_model(shader, vao, vertex_count, model, view, projection):
     glBindVertexArray(0)
     return
 
-def render_complex_model(shader, vao, draw_commands, model, view, projection):
-    """Renders a complex (batched) model using draw commands."""
+
+def render_complex_model(shader, vao, draw_commands, model, view, projection, texture_ids=None, default_texture=None):
+    """Renders a complex (batched) model using draw commands"""
     glUseProgram(shader)
 
     # Set uniforms
@@ -100,86 +180,69 @@ def render_complex_model(shader, vao, draw_commands, model, view, projection):
 
     glBindVertexArray(vao)
 
+    texture_loc = glGetUniformLocation(shader, "texture_diffuse1")
+    use_texture_loc = glGetUniformLocation(shader, "useTexture")
 
-    for start_index, vertex_count in draw_commands:
+    if texture_loc != -1:
+        glUniform1i(texture_loc, 0)
+
+    for idx, (start_index, vertex_count) in enumerate(draw_commands):
+        glActiveTexture(GL_TEXTURE0)
+
+        tex_id = None
+        if texture_ids and idx < len(texture_ids) and texture_ids[idx] is not None:
+            try:
+                tex_id = int(texture_ids[idx])
+            except (ValueError, TypeError):
+                tex_id = None
+
+        if tex_id is not None and tex_id > 0:
+            glBindTexture(GL_TEXTURE_2D, tex_id)
+            if use_texture_loc != -1:
+                glUniform1i(use_texture_loc, 1)
+        else:
+            if default_texture is not None and default_texture > 0:
+                glBindTexture(GL_TEXTURE_2D, default_texture)
+            if use_texture_loc != -1:
+                glUniform1i(use_texture_loc, 0)
+
         glDrawArrays(GL_TRIANGLES, start_index, vertex_count)
 
+    glBindTexture(GL_TEXTURE_2D, 0)
     glBindVertexArray(0)
     return
 
-def render_motion_blur_model(shader, vao, draw_commands, model, view, projection,
-                             velocity_world, samples=8, decay=0.75, base_alpha=0.9):
-    """
-    Object-space motion blur:
-    - shader: program
-    - vao, draw_commands: geometry
-    - model, view, projection: glm mats
-    - velocity_world: glm.vec3, world-space displacement per frame (current_pos - prev_pos)
-    - samples: number of blur samples (>=1). Higher = smoother but slower.
-    - decay: alpha decay per sample (0..1)
-    - base_alpha: starting alpha for first sample
-    """
-    if samples <= 1 or glm.length(velocity_world) == 0.0:
-        # No blur, just render normally
-        render_complex_model(shader, vao, draw_commands, model, view, projection)
-        return
-
-    # Enable blending and keep depth test active; but disable depth writes so blur doesn't occlude
-    glEnable(GL_BLEND)
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-    glEnable(GL_DEPTH_TEST)
-    glDepthMask(GL_FALSE)  # don't write depth for blur passes
-
-    # Ensure shader active
-    glUseProgram(shader)
-
-    # Precompute uniform locations (could be cached for speed)
-    loc_model = glGetUniformLocation(shader, "model")
-    loc_view = glGetUniformLocation(shader, "view")
-    loc_proj = glGetUniformLocation(shader, "projection")
-    loc_normal = glGetUniformLocation(shader, "normalMatrix")
-    loc_alpha = glGetUniformLocation(shader, "u_alpha")
-
-    # For each sample, draw the object shifted slightly *backwards* along velocity
-    # so the smear trails behind motion.
-    for i in range(samples):
-        t = (i + 1) / float(samples)  # from 1/samples .. 1.0
-        offset = -velocity_world * t  # move backward along motion
-        # build transformed model: translate by offset in world space, then apply original model
-        # note: if your model matrix already contains translation, adding offset should be applied in world coords
-        model_i = glm.translate(glm.mat4(1.0), glm.vec3(offset)) * model
-
-        normalMatrix = glm.transpose(glm.inverse(glm.mat3(model_i)))
-
-        if loc_model != -1: glUniformMatrix4fv(loc_model, 1, GL_FALSE, glm.value_ptr(model_i))
-        if loc_view != -1: glUniformMatrix4fv(loc_view, 1, GL_FALSE, glm.value_ptr(view))
-        if loc_proj != -1: glUniformMatrix4fv(loc_proj, 1, GL_FALSE, glm.value_ptr(projection))
-        if loc_normal != -1: glUniformMatrix3fv(loc_normal, 1, GL_FALSE, glm.value_ptr(normalMatrix))
-
-        # compute alpha for this sample
-        alpha = base_alpha * (decay ** i)
-        if loc_alpha != -1:
-            glUniform1f(loc_alpha, float(alpha))
-
-        glBindVertexArray(vao)
-        for start_index, vcount in draw_commands:
-            glDrawArrays(GL_TRIANGLES, start_index, vcount)
-        glBindVertexArray(0)
-
-    # restore state
-    glDepthMask(GL_TRUE)
-    glDisable(GL_BLEND)
-    # note: keep depth test enabled (it was before)
-    return
-
 def load_model(path):
-    vertices_np, draw_commands = load_model_batched(path)
+    """Loads a model and returns (vao, vbo, draw_commands, texture_ids)"""
+    vertices_np, draw_commands, texture_paths = load_model_batched(path)
     if vertices_np is None:
         print("Failed to load model, terminating.")
         glfw.terminate()
-        return
+        return None, None, None, None
+
     vao, vbo = setup_model(vertices_np)
-    return Object3D(vao, vbo, draw_commands)
+
+    # Load textures
+    texture_ids = []
+    for idx, tex_path in enumerate(texture_paths):
+        if tex_path:
+            tex_id = load_texture(tex_path)
+            texture_ids.append(tex_id)
+            if tex_id is None:
+                print(
+                    f"Warning: Failed to load texture {idx} for model {path}: {tex_path}")
+            else:
+                print(
+                    f"Loaded texture {idx} for model {path}: ID={tex_id}, path={tex_path}")
+        else:
+            texture_ids.append(None)
+            print(f"Info: No texture path for material {idx} in model {path}")
+
+    loaded_count = sum(1 for tid in texture_ids if tid is not None and tid > 0)
+    print(
+        f"Loaded {loaded_count}/{len(texture_paths)} textures for model {path}")
+    print(f"Texture IDs for {path}: {texture_ids}")
+    return Object3D(vao, vbo, draw_commands, texture_ids)
 
 def initialize_window():
     if not glfw.init():
@@ -210,18 +273,20 @@ def main():
     if not window:
         return
 
+    default_texture = create_default_texture()
+
     # Load batched model
-    car3d = load_model("objects/Porsche_911_GT2.obj").set_material([1.0, 0.1, 0.1], [0.9, 0.9, 0.9],  64.0)
+    car3d = load_model("objects/Porsche_911_GT2.obj").set_material(specular=[0.9, 0.9, 0.9], shininess=64.0)
     road = (load_model("objects/straight_road.obj")
-            .set_material([0.5, 0.5, 0.5], [0.1, 0.1, 0.1],  8.0)
+            .set_material( specular=[0.1, 0.1, 0.1], shininess=8.0)
             .translate(0.0, -0.5, 0.0)
             .scale(0.2))
     pine_tree = (load_model("objects/pine_tree.obj")
-                 .set_material([0.0, 0.4, 0.0], [0.2, 0.2, 0.2],  16.0)
+                 .set_material(specular=[0.2, 0.2, 0.2], shininess=16.0)
                  .translate(-0.7, -0.5, -1.0)
                  .scale(0.15))
     green_tree = (load_model("objects/green_tree.obj")
-                  .set_material([0.2, 0.8, 0.2], [0.3, 0.3, 0.3],  32.0)
+                  .set_material(specular=[0.3, 0.3, 0.3], shininess=32.0)
                   .translate(0.5, -0.5, 0.0)
                   .scale(0.2))
     static_objects = [road, pine_tree, green_tree]
@@ -251,7 +316,7 @@ def main():
 
     # Car
     car = Car(initial_position=glm.vec3(-0.1, -0.35, 0.0))
-    previous_time = glfw.get_time() # Czas ostatniej klatki
+    previous_time = glfw.get_time()
     car.prev_position = glm.vec3(car.position)
 
     # Camera Mode
@@ -302,16 +367,16 @@ def main():
         # === CAR ===
         car3d.prepare_material(shader_program)
         model_car = car.get_model_matrix()
-        render_complex_model(shader_program, car3d.vao, car3d.draw_commands, model_car, view, projection)
+        render_complex_model(shader_program, car3d.vao, car3d.draw_commands, model_car, view, projection, car3d.texture_ids, default_texture)
 
         pine_tree.prepare_material(shader_program)
-        render_complex_model(shader_program, pine_tree.vao, pine_tree.draw_commands, pine_tree.get_trans_matrix(), view, projection)
+        render_complex_model(shader_program, pine_tree.vao, pine_tree.draw_commands, pine_tree.get_trans_matrix(), view, projection, pine_tree.texture_ids, default_texture)
 
         green_tree.prepare_material(shader_program)
-        render_complex_model(shader_program, green_tree.vao, green_tree.draw_commands, green_tree.get_trans_matrix(), view, projection)
+        render_complex_model(shader_program, green_tree.vao, green_tree.draw_commands, green_tree.get_trans_matrix(), view, projection, green_tree.texture_ids, default_texture)
 
         road.prepare_material(shader_program)
-        render_complex_model(shader_program, road.vao, road.draw_commands, road.get_trans_matrix(), view, projection)
+        render_complex_model(shader_program, road.vao, road.draw_commands, road.get_trans_matrix(), view, projection, road.texture_ids, default_texture)
 
         # ===MOTION BLUR ===
         scene_velocity = car.position - car.prev_position
@@ -328,7 +393,7 @@ def main():
                 view_obj_blur = glm.translate(view, -obj_offset)
                 glUniform1f(glGetUniformLocation(shader_program, "u_alpha"), alpha)
                 obj.prepare_material(shader_program)
-                render_complex_model(shader_program, obj.vao, obj.draw_commands, obj.get_trans_matrix(), view_obj_blur, projection)
+                render_complex_model(shader_program, obj.vao, obj.draw_commands, obj.get_trans_matrix(), view_obj_blur, projection, obj.texture_ids, default_texture)
 
         glfw.swap_buffers(window)
         glfw.poll_events()
