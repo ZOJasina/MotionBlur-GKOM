@@ -223,6 +223,12 @@ def main():
             print(f"Warning: uniform '{name}' not found (location = -1). Maybe it's optimized out or name mismatch.")
         return loc
 
+    def set_material(diffuse, specular, shininess):
+        glUniform3f(uni("material.diffuse"), diffuse[0], diffuse[1], diffuse[2])
+        glUniform3f(uni("material.specular"), specular[0], specular[1], specular[2])
+        glUniform1f(uni("material.shininess"), shininess)
+        return
+
     glUniform3f(uni("lightPos"), 1.2, 1.0, 2.0)
     glUniform3f(uni("viewPos"), 0.0, 0.0, 2.0)
 
@@ -292,10 +298,7 @@ def main():
         view = glm.lookAt(eye, center, up)
 
         # === CAR ===
-        glUniform3f(uni("material.diffuse"), 1.0, 0.1, 0.1)
-        glUniform3f(uni("material.specular"), 0.9, 0.9, 0.9)
-        glUniform1f(uni("material.shininess"), 64.0)
-
+        set_material([1.0, 0.1, 0.1], [0.9, 0.9, 0.9],  64.0)
         model_car = car.get_model_matrix()
 
         # model_car = glm.scale(model_car, glm.vec3(0.2))
@@ -305,9 +308,7 @@ def main():
         render_complex_model(shader_program, car_vao, car_draw_commands, model_car, view, projection)
 
         # === ROAD ===
-        glUniform3f(uni("material.diffuse"), 0.5, 0.5, 0.5)
-        glUniform3f(uni("material.specular"), 0.1, 0.1, 0.1)
-        glUniform1f(uni("material.shininess"), 8.0)
+        set_material([0.5, 0.5, 0.5], [0.1, 0.1, 0.1],  8.0)
 
         model_road = glm.mat4(1.0)
         model_road = glm.translate(model_road, glm.vec3(0.0, -0.5, 0.0))
@@ -316,9 +317,7 @@ def main():
         render_complex_model(shader_program, road_vao, road_draw_commands, model_road, view, projection)
 
          # === LEFT TREE (pine) ===
-        glUniform3f(uni("material.diffuse"), 0.0, 0.4, 0.0)
-        glUniform3f(uni("material.specular"), 0.2, 0.2, 0.2)
-        glUniform1f(uni("material.shininess"), 16.0)
+        set_material([0.0, 0.4, 0.0], [0.2, 0.2, 0.2],  16.0)
 
         model_pine_tree_left = glm.mat4(1.0)
         model_pine_tree_left = glm.translate(model_pine_tree_left, glm.vec3(-0.7, -0.5, -1.0))
@@ -327,9 +326,7 @@ def main():
         render_complex_model(shader_program, pine_tree_left_vao, pine_tree_left_draw_commands, model_pine_tree_left, view, projection)
 
             # === RIGHT TREE (green) ===
-        glUniform3f(uni("material.diffuse"), 0.2, 0.8, 0.2)
-        glUniform3f(uni("material.specular"), 0.3, 0.3, 0.3)
-        glUniform1f(uni("material.shininess"), 32.0)
+        set_material([0.2, 0.8, 0.2], [0.3, 0.3, 0.3],  32.0)
 
         model_green_tree_right = glm.mat4(0.3)
         model_green_tree_right = glm.translate(model_green_tree_right, glm.vec3(0.5, -0.5, 0.0))
@@ -344,8 +341,11 @@ def main():
             view_blur = glm.translate(view, -offset)
             glUniform1f(glGetUniformLocation(shader_program, "u_alpha"), alpha)
 
+            set_material([0.5, 0.5, 0.5], [0.1, 0.1, 0.1],  8.0)
             render_complex_model(shader_program, road_vao, road_draw_commands, model_road, view_blur, projection)
+            set_material([0.0, 0.4, 0.0], [0.2, 0.2, 0.2],  16.0)
             render_complex_model(shader_program, pine_tree_left_vao, pine_tree_left_draw_commands, model_pine_tree_left, view_blur, projection)
+            set_material([0.2, 0.8, 0.2], [0.3, 0.3, 0.3],  32.0)
             render_complex_model(shader_program, green_tree_right_vao, green_tree_right_draw_commands, model_green_tree_right, view_blur, projection)
 
         glfw.swap_buffers(window)
