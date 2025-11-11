@@ -246,6 +246,7 @@ def main():
     # Car
     car = Car(initial_position=glm.vec3(-0.1, -0.35, 0.0))
     previous_time = glfw.get_time() # Czas ostatniej klatki
+    car.prev_position = glm.vec3(car.position)
 
     # Camera Mode
     camera_mode = 0  # 0: 3rd POV, 1: 1st POV
@@ -272,12 +273,6 @@ def main():
         delta_time = time_val - previous_time
         previous_time = time_val
         car.update(window, delta_time)
-
-        scene_velocity = car.position - car.prev_position
-
-        # parametr intensywności rozmycia
-        motion_blur_factor = 10
-        blur_steps = 10
 
         # === CAMERA ===
         up = glm.vec3(0.0, 1.0, 0.0)
@@ -307,15 +302,6 @@ def main():
         glUniform1f(glGetUniformLocation(shader_program, "u_alpha"), 1.0)
         render_complex_model(shader_program, car_vao, car_draw_commands, model_car, view, projection)
 
-        # === ROAD ===
-        set_material([0.5, 0.5, 0.5], [0.1, 0.1, 0.1],  8.0)
-
-        model_road = glm.mat4(1.0)
-        model_road = glm.translate(model_road, glm.vec3(0.0, -0.5, 0.0))
-        # model_road = glm.rotate(model_road, time_val * glm.radians(45.0), glm.vec3(0.0, 1.0, 0.0))
-        model_road = glm.scale(model_road, glm.vec3(0.2))
-        render_complex_model(shader_program, road_vao, road_draw_commands, model_road, view, projection)
-
          # === LEFT TREE (pine) ===
         set_material([0.0, 0.4, 0.0], [0.2, 0.2, 0.2],  16.0)
 
@@ -325,7 +311,7 @@ def main():
         model_pine_tree_left = glm.scale(model_pine_tree_left, glm.vec3(0.15))
         render_complex_model(shader_program, pine_tree_left_vao, pine_tree_left_draw_commands, model_pine_tree_left, view, projection)
 
-            # === RIGHT TREE (green) ===
+        # === RIGHT TREE (green) ===
         set_material([0.2, 0.8, 0.2], [0.3, 0.3, 0.3],  32.0)
 
         model_green_tree_right = glm.mat4(0.3)
@@ -334,19 +320,47 @@ def main():
         model_green_tree_right = glm.scale(model_green_tree_right, glm.vec3(0.2))
         render_complex_model(shader_program, green_tree_right_vao, green_tree_right_draw_commands, model_green_tree_right, view, projection)
 
+        # === ROAD ===
+        set_material([0.5, 0.5, 0.5], [0.1, 0.1, 0.1],  8.0)
+
+        model_road = glm.mat4(1.0)
+        model_road = glm.translate(model_road, glm.vec3(0.0, -0.5, 0.0))
+        # model_road = glm.rotate(model_road, time_val * glm.radians(45.0), glm.vec3(0.0, 1.0, 0.0))
+        model_road = glm.scale(model_road, glm.vec3(0.2))
+        render_complex_model(shader_program, road_vao, road_draw_commands, model_road, view, projection)
+
+        # ===MOTION BLUR ===
+        scene_velocity = car.position - car.prev_position
+        motion_blur_factor = 10
+        blur_steps = 10
+
         for i in range(blur_steps):
             alpha = 1.0 / blur_steps
-            offset = scene_velocity * (i / blur_steps) * motion_blur_factor
+            step_fraction = i / blur_steps
 
-            view_blur = glm.translate(view, -offset)
+            # ROAD
+            distance_road = glm.length(car.position - glm.vec3(0.0, -0.5, 0.0))
+            road_offset = scene_velocity * step_fraction * motion_blur_factor * (1.0 / distance_road)
+            view_road_blur = glm.translate(view, -road_offset)
             glUniform1f(glGetUniformLocation(shader_program, "u_alpha"), alpha)
-
             set_material([0.5, 0.5, 0.5], [0.1, 0.1, 0.1],  8.0)
-            render_complex_model(shader_program, road_vao, road_draw_commands, model_road, view_blur, projection)
+            render_complex_model(shader_program, road_vao, road_draw_commands, model_road, view_road_blur, projection)
+
+            # LEFT TREE
+            distance_pine = glm.length(car.position - glm.vec3(-0.7, -0.5, -1.0))
+            pine_offset = scene_velocity * step_fraction * motion_blur_factor * (1.0 / distance_pine)
+            view_pine_blur = glm.translate(view, -pine_offset)
+            glUniform1f(glGetUniformLocation(shader_program, "u_alpha"), alpha)
             set_material([0.0, 0.4, 0.0], [0.2, 0.2, 0.2],  16.0)
-            render_complex_model(shader_program, pine_tree_left_vao, pine_tree_left_draw_commands, model_pine_tree_left, view_blur, projection)
+            render_complex_model(shader_program, pine_tree_left_vao, pine_tree_left_draw_commands, model_pine_tree_left, view_pine_blur, projection)
+
+            # RIGHT TREE
+            distance_green = glm.length(car.position - glm.vec3(0.5, -0.5, 0.0))
+            green_offset = scene_velocity * step_fraction * motion_blur_factor * (1.0 / distance_green)
+            view_green_blur = glm.translate(view, -green_offset)
+            glUniform1f(glGetUniformLocation(shader_program, "u_alpha"), alpha)
             set_material([0.2, 0.8, 0.2], [0.3, 0.3, 0.3],  32.0)
-            render_complex_model(shader_program, green_tree_right_vao, green_tree_right_draw_commands, model_green_tree_right, view_blur, projection)
+            render_complex_model(shader_program, green_tree_right_vao, green_tree_right_draw_commands, model_green_tree_right, view_green_blur, projection)
 
         glfw.swap_buffers(window)
         glfw.poll_events()
