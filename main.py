@@ -167,7 +167,7 @@ def render_model(shader, vao, vertex_count, model, view, projection):
     return
 
 
-def render_complex_model(shader, vao, draw_commands, model, view, projection, texture_ids=None, default_texture=None):
+def render_complex_model(shader, vao, draw_commands, model, view, projection, texture_ids=None, default_texture=None, material_properties=None):
     """Renders a complex (batched) model using draw commands"""
     glUseProgram(shader)
 
@@ -187,6 +187,14 @@ def render_complex_model(shader, vao, draw_commands, model, view, projection, te
         glUniform1i(texture_loc, 0)
 
     for idx, (start_index, vertex_count) in enumerate(draw_commands):
+        # Apply material properties for this material if available
+        if material_properties and idx < len(material_properties):
+            mat_props = material_properties[idx]
+            glUniform3f(glGetUniformLocation(shader, "material.diffuse"), mat_props['diffuse'][0], mat_props['diffuse'][1], mat_props['diffuse'][2])
+            glUniform3f(glGetUniformLocation(shader, "material.specular"), mat_props['specular'][0], mat_props['specular'][1], mat_props['specular'][2])
+            glUniform1f(glGetUniformLocation(shader, "material.shininess"), mat_props['shininess'])
+            glUniform3f(glGetUniformLocation(shader, "material.ambient"), mat_props['ambient'][0], mat_props['ambient'][1], mat_props['ambient'][2])
+
         glActiveTexture(GL_TEXTURE0)
 
         tex_id = None
@@ -213,12 +221,12 @@ def render_complex_model(shader, vao, draw_commands, model, view, projection, te
     return
 
 def load_model(path):
-    """Loads a model and returns (vao, vbo, draw_commands, texture_ids)"""
-    vertices_np, draw_commands, texture_paths = load_model_batched(path)
+    """Loads a model and returns Object3D with vao, vbo, draw_commands, texture_ids, and material_properties"""
+    vertices_np, draw_commands, texture_paths, material_properties = load_model_batched(path)
     if vertices_np is None:
         print("Failed to load model, terminating.")
         glfw.terminate()
-        return None, None, None, None
+        return None
 
     vao, vbo = setup_model(vertices_np)
 
@@ -242,7 +250,7 @@ def load_model(path):
     print(
         f"Loaded {loaded_count}/{len(texture_paths)} textures for model {path}")
     print(f"Texture IDs for {path}: {texture_ids}")
-    return Object3D(vao, vbo, draw_commands, texture_ids)
+    return Object3D(vao, vbo, draw_commands, texture_ids, material_properties)
 
 def initialize_window():
     if not glfw.init():
@@ -277,7 +285,7 @@ def main():
     default_texture = create_default_texture()
 
     # Load batched model
-    car3d = load_model("objects/vehicle-racer.obj").set_material(specular=[0.9, 0.9, 0.9], shininess=64.0)
+    car3d = load_model("objects/porsche_obj.obj")
     road = (load_model("objects/straight_road.obj")
             .set_material( specular=[0.1, 0.1, 0.1], shininess=8.0)
             .translate(0.0, -0.5, 0.0)
@@ -365,18 +373,26 @@ def main():
         glUniform1f(uni("u_alpha"), 1.0)
 
         # === CAR ===
-        car3d.prepare_material(shader_program)
         model_car = car.get_model_matrix()
-        render_complex_model(shader_program, car3d.vao, car3d.draw_commands, model_car, view, projection, car3d.texture_ids, default_texture)
+        render_complex_model(shader_program, car3d.vao, car3d.draw_commands, model_car, view, projection, car3d.texture_ids, default_texture, car3d.material_properties)
 
-        pine_tree.prepare_material(shader_program)
-        render_complex_model(shader_program, pine_tree.vao, pine_tree.draw_commands, pine_tree.get_trans_matrix(), view, projection, pine_tree.texture_ids, default_texture)
+        if pine_tree.material_properties:
+            render_complex_model(shader_program, pine_tree.vao, pine_tree.draw_commands, pine_tree.get_trans_matrix(), view, projection, pine_tree.texture_ids, default_texture, pine_tree.material_properties)
+        else:
+            pine_tree.prepare_material(shader_program)
+            render_complex_model(shader_program, pine_tree.vao, pine_tree.draw_commands, pine_tree.get_trans_matrix(), view, projection, pine_tree.texture_ids, default_texture)
 
-        green_tree.prepare_material(shader_program)
-        render_complex_model(shader_program, green_tree.vao, green_tree.draw_commands, green_tree.get_trans_matrix(), view, projection, green_tree.texture_ids, default_texture)
+        if green_tree.material_properties:
+            render_complex_model(shader_program, green_tree.vao, green_tree.draw_commands, green_tree.get_trans_matrix(), view, projection, green_tree.texture_ids, default_texture, green_tree.material_properties)
+        else:
+            green_tree.prepare_material(shader_program)
+            render_complex_model(shader_program, green_tree.vao, green_tree.draw_commands, green_tree.get_trans_matrix(), view, projection, green_tree.texture_ids, default_texture)
 
-        road.prepare_material(shader_program)
-        render_complex_model(shader_program, road.vao, road.draw_commands, road.get_trans_matrix(), view, projection, road.texture_ids, default_texture)
+        if road.material_properties:
+            render_complex_model(shader_program, road.vao, road.draw_commands, road.get_trans_matrix(), view, projection, road.texture_ids, default_texture, road.material_properties)
+        else:
+            road.prepare_material(shader_program)
+            render_complex_model(shader_program, road.vao, road.draw_commands, road.get_trans_matrix(), view, projection, road.texture_ids, default_texture)
 
         # ===MOTION BLUR ===
         scene_velocity = car.position - car.prev_position
@@ -392,8 +408,11 @@ def main():
                 obj_offset = scene_velocity * step_fraction * motion_blur_factor * (1.0 / obj_distance)
                 view_obj_blur = glm.translate(view, -obj_offset)
                 glUniform1f(uni("u_alpha"), alpha)
-                obj.prepare_material(shader_program)
-                render_complex_model(shader_program, obj.vao, obj.draw_commands, obj.get_trans_matrix(), view_obj_blur, projection, obj.texture_ids, default_texture)
+                if obj.material_properties:
+                    render_complex_model(shader_program, obj.vao, obj.draw_commands, obj.get_trans_matrix(), view_obj_blur, projection, obj.texture_ids, default_texture, obj.material_properties)
+                else:
+                    obj.prepare_material(shader_program)
+                    render_complex_model(shader_program, obj.vao, obj.draw_commands, obj.get_trans_matrix(), view_obj_blur, projection, obj.texture_ids, default_texture)
 
         glfw.swap_buffers(window)
         glfw.poll_events()
