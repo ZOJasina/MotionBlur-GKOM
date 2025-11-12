@@ -12,6 +12,7 @@ struct Material {
     vec3 diffuse;
     vec3 specular;
     float shininess;
+    float opacity;
 };
 uniform Material material;
 
@@ -25,6 +26,7 @@ uniform float u_alpha;
 
 uniform sampler2D texture_diffuse1;
 uniform int useTexture;
+uniform int cameraMode;
 
 void main()
 {
@@ -50,5 +52,7 @@ void main()
     vec3 specular = light.specular * (spec * material.specular);
 
     vec3 result = ambient + diffuse + specular;
-    FragColor = vec4(result, u_alpha);
+    float alpha = u_alpha;
+    if (cameraMode == 1) {alpha = material.opacity*u_alpha;}
+    FragColor = vec4(result, alpha);
 }

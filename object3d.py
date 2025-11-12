@@ -25,6 +25,7 @@ class Object3D:
         self.specular = [1.0, 1.0, 1.0]   # RGB
         self.shininess = 32.0
         self.ambient = [0.1, 0.1, 0.1]    # RGB
+        self.opacity = 1.0
 
         # Transformation properties (default values)
         self.translation = [0.0, 0.0, 0.0]
@@ -43,7 +44,7 @@ class Object3D:
         self.scale_factor *= factor
         return self
 
-    def set_material(self, diffuse=None, specular=None, shininess=None, ambient=None):
+    def set_material(self, diffuse=None, specular=None, shininess=None, ambient=None, opacity=None):
         """Update the material properties of the object."""
         if diffuse:
             self.diffuse = diffuse
@@ -53,6 +54,8 @@ class Object3D:
             self.ambient = ambient
         if shininess is not None:
             self.shininess = shininess
+        if opacity is not None:
+            self.opacity = opacity
         return self
 
     def prepare_material(self, shader_program):
@@ -60,6 +63,7 @@ class Object3D:
         glUniform3f(glGetUniformLocation(shader_program, "material.specular"), self.specular[0], self.specular[1], self.specular[2])
         glUniform1f(glGetUniformLocation(shader_program, "material.shininess"), self.shininess)
         glUniform3f(glGetUniformLocation(shader_program, "material.ambient"), self.ambient[0], self.ambient[1], self.ambient[2])
+        glUniform1f(glGetUniformLocation(shader_program, "material.opacity"), self.opacity)
         return
 
     def get_trans_matrix(self):

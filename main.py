@@ -194,6 +194,7 @@ def render_complex_model(shader, vao, draw_commands, model, view, projection, te
             glUniform3f(glGetUniformLocation(shader, "material.specular"), mat_props['specular'][0], mat_props['specular'][1], mat_props['specular'][2])
             glUniform1f(glGetUniformLocation(shader, "material.shininess"), mat_props['shininess'])
             glUniform3f(glGetUniformLocation(shader, "material.ambient"), mat_props['ambient'][0], mat_props['ambient'][1], mat_props['ambient'][2])
+            glUniform1f(glGetUniformLocation(shader, "material.opacity"), mat_props['opacity'])
 
         glActiveTexture(GL_TEXTURE0)
 
@@ -302,6 +303,12 @@ def main():
 
     glClearColor(0.1, 0.1, 0.1, 1.0)
 
+    def uni(name):
+        loc = glGetUniformLocation(shader_program, name)
+        if loc == -1:
+            print(f"Warning: uniform '{name}' not found (location = -1). Maybe it's optimized out or name mismatch.")
+        return loc
+
     # Camera
     glUseProgram(shader_program)
     view = glm.lookAt(glm.vec3(0, 0, 2), glm.vec3(0, 0, 0), glm.vec3(0, 1, 0))
@@ -313,15 +320,10 @@ def main():
         nonlocal camera_mode
         if key == glfw.KEY_C and action == glfw.PRESS:
             camera_mode = 1 - camera_mode
+            glUniform1i(uni("cameraMode"), camera_mode)
     glfw.set_key_callback(window, key_callback)
 
     # Light
-    def uni(name):
-        loc = glGetUniformLocation(shader_program, name)
-        if loc == -1:
-            print(f"Warning: uniform '{name}' not found (location = -1). Maybe it's optimized out or name mismatch.")
-        return loc
-
     glUniform3f(uni("lightPos"), 1.2, 1.0, 2.0)
     glUniform3f(uni("viewPos"), 0.0, 0.0, 2.0)
 
@@ -336,6 +338,9 @@ def main():
 
     glEnable(GL_BLEND)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
+    glUniform1f(uni("u_alpha"), 1.0)
+    glUniform1i(uni("cameraMode"), camera_mode)
 
     # Main loop
     while not glfw.window_should_close(window):
@@ -363,19 +368,15 @@ def main():
             eye = car.position + (backward_vector * distance_behind) + glm.vec3(0.0, height_above, 0.0)
             center = car.position + (forward_vector * look_ahead)
         else:
-            right_vector = glm.vec3(-glm.cos(car.angle), 0.0, glm.sin(car.angle))
-            height_offset, right_offset, forward_offset, look_ahead = 0.08, 0.06, -0.075, 1.0
+            right_vector = glm.vec3(glm.cos(car.angle), 0.0, -glm.sin(car.angle))
+            height_offset, right_offset, forward_offset, look_ahead = 0.20, -0.03, -0.07, 1.0
             eye = car.position + glm.vec3(0.0, height_offset, 0.0) + (right_vector * right_offset) + (forward_vector * forward_offset)
             center = eye + (forward_vector * look_ahead)
 
         view = glm.lookAt(eye, center, up)
         glUniform3f(uni("viewPos"), eye.x, eye.y, eye.z)
-        glUniform1f(uni("u_alpha"), 1.0)
 
-        # === CAR ===
-        model_car = car.get_model_matrix()
-        render_complex_model(shader_program, car3d.vao, car3d.draw_commands, model_car, view, projection, car3d.texture_ids, default_texture, car3d.material_properties)
-
+        # === STATIC SCENERY ===
         if pine_tree.material_properties:
             render_complex_model(shader_program, pine_tree.vao, pine_tree.draw_commands, pine_tree.get_trans_matrix(), view, projection, pine_tree.texture_ids, default_texture, pine_tree.material_properties)
         else:
@@ -413,6 +414,11 @@ def main():
                 else:
                     obj.prepare_material(shader_program)
                     render_complex_model(shader_program, obj.vao, obj.draw_commands, obj.get_trans_matrix(), view_obj_blur, projection, obj.texture_ids, default_texture)
+        glUniform1f(uni("u_alpha"), 1.0)
+
+        # === CAR === (rendered last due to windowpane opacity)
+        model_car = car.get_model_matrix()
+        render_complex_model(shader_program, car3d.vao, car3d.draw_commands, model_car, view, projection, car3d.texture_ids, default_texture, car3d.material_properties)
 
         glfw.swap_buffers(window)
         glfw.poll_events()

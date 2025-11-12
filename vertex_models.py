@@ -5,6 +5,7 @@ import logging
 import os
 pywavefront.configure_logging(logging.ERROR)
 
+
 def cube_vertices():
     return np.array([
         # positions         # normals
@@ -57,6 +58,7 @@ def cube_vertices():
         -0.5,  0.5, -0.5,    0.0,  1.0,  0.0
     ], dtype=np.float32)
 
+
 def triangle_vertices():
     return np.array([
         #  pos               normal
@@ -64,6 +66,7 @@ def triangle_vertices():
          0.5, -0.5, 0.0,     0.0, 0.0, 1.0,
          0.0,  0.5, 0.0,     0.0, 0.0, 1.0,
     ], dtype=np.float32)
+
 
 def parse_mtl_file(mtl_path, obj_dir):
     """Parse MTL file and return a dict mapping material names to texture paths and material properties."""
@@ -84,7 +87,8 @@ def parse_mtl_file(mtl_path, obj_dir):
                             'diffuse': [1.0, 1.0, 1.0],
                             'specular': [1.0, 1.0, 1.0],
                             'shininess': 32.0,
-                            'ambient': [0.1, 0.1, 0.1]
+                            'ambient': [0.1, 0.1, 0.1],
+                            'opacity': 1.0
                         }
                 elif current_material:
                     if line.startswith('map_Kd'):
@@ -132,10 +136,15 @@ def parse_mtl_file(mtl_path, obj_dir):
                         parts = line.split()
                         if len(parts) >= 2:
                             material_data[current_material]['shininess'] = float(parts[1])
+                    elif line.startswith('d'):
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            material_data[current_material]['opacity'] = float(parts[1])
     except Exception as e:
         print(f"Error parsing MTL file {mtl_path}: {e}")
 
     return material_data
+
 
 def load_model_batched(path):
     """Reads whole model and arranges data in format [pos_x, pos_y, pos_z, norm_x, norm_y, norm_z, tex_u, tex_v]
@@ -203,7 +212,8 @@ def load_model_batched(path):
                     'diffuse': [1.0, 1.0, 1.0],
                     'specular': [1.0, 1.0, 1.0],
                     'shininess': 32.0,
-                    'ambient': [0.1, 0.1, 0.1]
+                    'ambient': [0.1, 0.1, 0.1],
+                    'opacity': 1.0
                 }
 
                 if material_name and material_name in mtl_data:
@@ -213,6 +223,7 @@ def load_model_batched(path):
                     mat_props['specular'] = mtl_info.get('specular', [1.0, 1.0, 1.0])
                     mat_props['shininess'] = mtl_info.get('shininess', 32.0)
                     mat_props['ambient'] = mtl_info.get('ambient', [0.1, 0.1, 0.1])
+                    mat_props['opacity'] = mtl_info.get('opacity', 1.0)
 
                 # Verify texture exists
                 if texture_path and not os.path.exists(texture_path):
