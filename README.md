@@ -41,6 +41,11 @@ osoby)
 **(b) należy uwzględnić odległość od obiektów - obiekty bliższe rozmazują
 się bardziej niż dalsze
 
+* 8. kolizje - z objektami ze sceny
+* 9. tor - owalny ze startem/metą oraz ograniczeniem by nie dało się wyjechać poza trasę
+* 10. (opcjonalnie) timer - mierzymy czas przejechania trasy
+* 11. (opcjonalnie) dodanie przeszkód (np. drzew) na trasie
+
 ## Wymagania projektu
 * W ramach projektu należy stworzyć program, który będzie realizował opisane w
 temacie funkcje. Projekt jest zadaniem zespołowym, gdzie każdy zespół składa
