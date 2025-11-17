@@ -290,10 +290,10 @@ def main():
     road = (load_model("objects/straight_road.obj")
             .set_material( specular=[0.1, 0.1, 0.1], shininess=8.0)
             .translate(0.0, -0.5, 0.0)
-            .scale(0.2))
+            .scale(0.5))
     pine_tree = (load_model("objects/pine_tree.obj")
                  .set_material(specular=[0.2, 0.2, 0.2], shininess=16.0)
-                 .translate(-0.7, -0.5, -1.0)
+                 .translate(-1.3, -0.5, -2.0)
                  .scale(0.15))
     green_tree = (load_model("objects/green_tree.obj")
                   .set_material(specular=[0.3, 0.3, 0.3], shininess=32.0)
@@ -368,10 +368,11 @@ def main():
             eye = car.position + (backward_vector * distance_behind) + glm.vec3(0.0, height_above, 0.0)
             center = car.position + (forward_vector * look_ahead)
         else:
+            downward_tilt = glm.vec3(0.0, -0.20, 0.0)
             right_vector = glm.vec3(glm.cos(car.angle), 0.0, -glm.sin(car.angle))
-            height_offset, right_offset, forward_offset, look_ahead = 0.20, -0.03, -0.07, 1.0
+            height_offset, right_offset, forward_offset, look_ahead = 0.214, -0.045, -0.067, 1.0
             eye = car.position + glm.vec3(0.0, height_offset, 0.0) + (right_vector * right_offset) + (forward_vector * forward_offset)
-            center = eye + (forward_vector * look_ahead)
+            center = eye + (forward_vector * look_ahead) + downward_tilt
 
         view = glm.lookAt(eye, center, up)
         glUniform3f(uni("viewPos"), eye.x, eye.y, eye.z)
@@ -396,17 +397,29 @@ def main():
             render_complex_model(shader_program, road.vao, road.draw_commands, road.get_trans_matrix(), view, projection, road.texture_ids, default_texture)
 
         # ===MOTION BLUR ===
-        scene_velocity = car.position - car.prev_position
-        motion_blur_factor = 10
+        smoothing_factor = 0.2  # 0 = no smoothing, 1 = full lag
+        car.smoothed_velocity = glm.mix(car.smoothed_velocity, car.position - car.prev_position, smoothing_factor)
+        velocity = car.smoothed_velocity
+        speed = glm.length(velocity)
+
         blur_steps = 10
+
+        base_blur_strength = 700     # tune this
+        max_speed = 3.0             # speed where blur reaches full strength
+
+        motion_blur_factor = base_blur_strength * glm.smoothstep(0.0, max_speed, speed)
 
         for i in range(blur_steps):
             alpha = 1.0 / blur_steps
-            step_fraction = i / blur_steps
+            step_fraction = (i +1) / blur_steps
 
             for obj in static_objects:
                 obj_distance = glm.length(car.position - obj.get_position())
-                obj_offset = scene_velocity * step_fraction * motion_blur_factor * (1.0 / obj_distance)
+                obj_distance = max(obj_distance, 0.001)
+                distance_factor = 1.0 / obj_distance
+
+
+                obj_offset = velocity * step_fraction * motion_blur_factor * distance_factor
                 view_obj_blur = glm.translate(view, -obj_offset)
                 glUniform1f(uni("u_alpha"), alpha)
                 if obj.material_properties:

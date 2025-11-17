@@ -8,7 +8,7 @@ class Car:
         # constants
         self.ACCELERATION = 0.75
         self.FRICTION = 0.5
-        self.MAX_SPEED = 3.0
+        self.MAX_SPEED = 5.0
         self.MAX_SPEED_REVERSE = -1.0
         self.ROTATION_SPEED = 0.5
 
@@ -17,6 +17,7 @@ class Car:
         self.prev_position = glm.vec3(initial_position)
         self.speed = 0.0            # units per second
         self.angle = 0.0            # radians (0.0 -> along the -Z)
+        self.smoothed_velocity = glm.vec3(0.0, 0.0, 0.0)
 
     def update(self, window, delta_time):
         """Updates car state."""

@@ -1,6 +1,6 @@
 # Blender v3.0.0 OBJ File: 'green_tree.blend'
 # www.blender.org
-mtllib pine_tree2.mtl
+mtllib pine_tree.mtl
 o trunk.002_Cylinder
 v 0.000000 0.044782 -0.677673
 v -0.000000 0.345121 -0.581235
