@@ -30,6 +30,7 @@ class Object3D:
         # Transformation properties (default values)
         self.translation = [0.0, 0.0, 0.0]
         self.scale_factor = 1.0
+        self.rotation = [0.0, 0.0, 0.0]
 
     # Fluent setters
     def translate(self, x, y, z):
@@ -42,6 +43,13 @@ class Object3D:
     def scale(self, factor):
         """Scale the object by a given factor."""
         self.scale_factor *= factor
+        return self
+
+    def rotate(self, x_deg, y_deg, z_deg):
+        """Rotate the object by the given Euler angles (degrees)."""
+        self.rotation[0] += x_deg
+        self.rotation[1] += y_deg
+        self.rotation[2] += z_deg
         return self
 
     def set_material(self, diffuse=None, specular=None, shininess=None, ambient=None, opacity=None):
@@ -69,7 +77,11 @@ class Object3D:
     def get_trans_matrix(self):
         tmatrix = glm.mat4(1.0)
         tmatrix = glm.translate(tmatrix, glm.vec3(self.translation[0], self.translation[1], self.translation[2]))
-        # tmatrix = glm.rotate(tmatrix, time_val * glm.radians(45.0), glm.vec3(0.0, 1.0, 0.0))
+
+        tmatrix = glm.rotate(tmatrix, glm.radians(self.rotation[0]), glm.vec3(1, 0, 0))
+        tmatrix = glm.rotate(tmatrix, glm.radians(self.rotation[1]), glm.vec3(0, 1, 0))
+        tmatrix = glm.rotate(tmatrix, glm.radians(self.rotation[2]), glm.vec3(0, 0, 1))
+
         tmatrix = glm.scale(tmatrix, glm.vec3(self.scale_factor))
         return tmatrix
 

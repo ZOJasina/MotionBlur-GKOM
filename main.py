@@ -287,6 +287,11 @@ def main():
 
     # Load batched model
     car3d = load_model("objects/porsche_obj.obj")
+    steering_wheel = (load_model("objects/steering_wheel.obj")
+        .set_material( specular=[0.1, 0.1, 0.1], shininess=8.0)
+        .translate(-0.15, -0.24, -0.16)
+        .rotate(0, -90, 0)
+        .scale(0.05))
     road = (load_model("objects/straight_road.obj")
             .set_material( specular=[0.1, 0.1, 0.1], shininess=8.0)
             .translate(0.0, -0.5, 0.0)
@@ -395,6 +400,12 @@ def main():
         else:
             road.prepare_material(shader_program)
             render_complex_model(shader_program, road.vao, road.draw_commands, road.get_trans_matrix(), view, projection, road.texture_ids, default_texture)
+
+        if steering_wheel.material_properties:
+            render_complex_model(shader_program, steering_wheel.vao, steering_wheel.draw_commands, steering_wheel.get_trans_matrix(), view, projection, steering_wheel.texture_ids, default_texture, steering_wheel.material_properties)
+        else:
+            steering_wheel.prepare_material(shader_program)
+            render_complex_model(shader_program, steering_wheel.vao, steering_wheel.draw_commands, steering_wheel.get_trans_matrix(), view, projection, steering_wheel.texture_ids, default_texture)
 
         # ===MOTION BLUR ===
         smoothing_factor = 0.2  # 0 = no smoothing, 1 = full lag
