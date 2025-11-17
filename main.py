@@ -368,10 +368,11 @@ def main():
             eye = car.position + (backward_vector * distance_behind) + glm.vec3(0.0, height_above, 0.0)
             center = car.position + (forward_vector * look_ahead)
         else:
+            downward_tilt = glm.vec3(0.0, -0.20, 0.0)
             right_vector = glm.vec3(glm.cos(car.angle), 0.0, -glm.sin(car.angle))
-            height_offset, right_offset, forward_offset, look_ahead = 0.20, -0.03, -0.07, 1.0
+            height_offset, right_offset, forward_offset, look_ahead = 0.214, -0.045, -0.067, 1.0
             eye = car.position + glm.vec3(0.0, height_offset, 0.0) + (right_vector * right_offset) + (forward_vector * forward_offset)
-            center = eye + (forward_vector * look_ahead)
+            center = eye + (forward_vector * look_ahead) + downward_tilt
 
         view = glm.lookAt(eye, center, up)
         glUniform3f(uni("viewPos"), eye.x, eye.y, eye.z)
