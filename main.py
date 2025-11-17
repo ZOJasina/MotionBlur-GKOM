@@ -396,17 +396,29 @@ def main():
             render_complex_model(shader_program, road.vao, road.draw_commands, road.get_trans_matrix(), view, projection, road.texture_ids, default_texture)
 
         # ===MOTION BLUR ===
-        scene_velocity = car.position - car.prev_position
-        motion_blur_factor = 10
+        smoothing_factor = 0.2  # 0 = no smoothing, 1 = full lag
+        car.smoothed_velocity = glm.mix(car.smoothed_velocity, car.position - car.prev_position, smoothing_factor)
+        velocity = car.smoothed_velocity
+        speed = glm.length(velocity)
+
         blur_steps = 10
+
+        base_blur_strength = 700     # tune this
+        max_speed = 3.0             # speed where blur reaches full strength
+
+        motion_blur_factor = base_blur_strength * glm.smoothstep(0.0, max_speed, speed)
 
         for i in range(blur_steps):
             alpha = 1.0 / blur_steps
-            step_fraction = i / blur_steps
+            step_fraction = (i +1) / blur_steps
 
             for obj in static_objects:
                 obj_distance = glm.length(car.position - obj.get_position())
-                obj_offset = scene_velocity * step_fraction * motion_blur_factor * (1.0 / obj_distance)
+                obj_distance = max(obj_distance, 0.001)
+                distance_factor = 1.0 / obj_distance
+
+
+                obj_offset = velocity * step_fraction * motion_blur_factor * distance_factor
                 view_obj_blur = glm.translate(view, -obj_offset)
                 glUniform1f(uni("u_alpha"), alpha)
                 if obj.material_properties:
