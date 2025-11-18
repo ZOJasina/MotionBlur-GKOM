@@ -18,6 +18,7 @@ class Car:
         self.speed = 0.0            # units per second
         self.angle = 0.0            # radians (0.0 -> along the -Z)
         self.smoothed_velocity = glm.vec3(0.0, 0.0, 0.0)
+        self.collision_radius = 0.5
 
     def update(self, window, delta_time):
         """Updates car state."""

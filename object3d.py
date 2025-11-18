@@ -18,6 +18,8 @@ class Object3D:
         self.draw_commands = draw_commands
         self.texture_ids = texture_ids
         self.material_properties = material_properties if material_properties else []
+        self.collision_radius = 0.0
+        self.collision_center = glm.vec3(0, 0, 0)
         self.deleted = False  # to avoid double deletion
 
         # Material properties (default values) - used when material_properties is not set
@@ -39,6 +41,19 @@ class Object3D:
         self.translation[1] += y
         self.translation[2] += z
         return self
+
+    def set_collision_radius(self, rad):
+        """set collision radius for the object by a given radius."""
+        self.collision_radius = rad
+        return self
+
+    def set_collision_center(self, x, y, z):
+        self.collision_center = glm.vec3(x, y, z)
+        return self
+
+    def get_collision_position(self):
+        base = glm.vec3(self.translation[0], self.translation[1], self.translation[2])
+        return base + self.collision_center
 
     def scale(self, factor):
         """Scale the object by a given factor."""

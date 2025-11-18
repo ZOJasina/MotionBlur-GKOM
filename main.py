@@ -277,6 +277,15 @@ def initialize_window():
         return
     return window, shader_program
 
+def check_collision(car, obj):
+    car_pos = car.position
+    obj_pos = obj.get_position()
+
+    distance = glm.length(car_pos - obj_pos)
+    min_dist = car.collision_radius + obj.collision_radius
+
+    return distance < min_dist, distance, min_dist
+
 
 def main():
     window, shader_program = initialize_window()
@@ -299,11 +308,15 @@ def main():
     pine_tree = (load_model("objects/pine_tree.obj")
                  .set_material(specular=[0.2, 0.2, 0.2], shininess=16.0)
                  .translate(-1.3, -0.5, -2.0)
-                 .scale(0.15))
+                 .scale(0.15)
+                 .set_collision_radius(0.05)
+                 .set_collision_center(0, -0.7, 0))
     green_tree = (load_model("objects/green_tree.obj")
                   .set_material(specular=[0.3, 0.3, 0.3], shininess=32.0)
                   .translate(0.5, -0.5, 0.0)
-                  .scale(0.2))
+                  .scale(0.2)
+                  .set_collision_radius(0.0001)
+                  .set_collision_center(0, -1.5, 0))
     static_objects = [road, pine_tree, green_tree]
 
     glClearColor(0.1, 0.1, 0.1, 1.0)
@@ -418,6 +431,24 @@ def main():
         else:
             steering_wheel.prepare_material(shader_program)
             render_complex_model(shader_program, steering_wheel.vao, steering_wheel.draw_commands, wheel_world_model, view, projection, steering_wheel.texture_ids, default_texture)
+
+        # === COLLISIONS ===
+        for obj in static_objects:
+            if not hasattr(obj, "collision_radius"):
+                continue  # skip objects without collision
+
+            collided, dist, min_dist = check_collision(car, obj)
+            if collided:
+                # Push the car out of the tree
+                push_dir = car.position - obj.get_collision_position()
+                push_dir.y = 0.0
+                push_dir = glm.normalize(push_dir)
+                correction = push_dir * (min_dist - dist)
+                car.position += correction
+
+                # Stop the car or reduce speed
+                car.velocity = glm.vec3(0, 0, 0)
+                car.speed = 0.0
 
         # ===MOTION BLUR ===
         smoothing_factor = 0.2  # 0 = no smoothing, 1 = full lag
