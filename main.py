@@ -382,6 +382,18 @@ def main():
         view = glm.lookAt(eye, center, up)
         glUniform3f(uni("viewPos"), eye.x, eye.y, eye.z)
 
+        # === STEERING WHEEL ===
+        wheel_local_scale = glm.scale(glm.mat4(1.0), glm.vec3(0.3))
+        wheel_local_base_rotate = glm.rotate(glm.mat4(1.0), glm.radians(90.0), glm.vec3(0,1,0))
+
+        wheel_local_translate = glm.translate(glm.mat4(1.0), glm.vec3(0.25, 0.5, 0.8))   # local offset in car space
+        wheel_local_transform = wheel_local_translate * (wheel_local_base_rotate) * wheel_local_scale
+
+        # compose with car model
+        car_model = car.get_model_matrix()
+        wheel_world_model = car_model * wheel_local_transform
+
+
         # === STATIC SCENERY ===
         if pine_tree.material_properties:
             render_complex_model(shader_program, pine_tree.vao, pine_tree.draw_commands, pine_tree.get_trans_matrix(), view, projection, pine_tree.texture_ids, default_texture, pine_tree.material_properties)
@@ -402,10 +414,10 @@ def main():
             render_complex_model(shader_program, road.vao, road.draw_commands, road.get_trans_matrix(), view, projection, road.texture_ids, default_texture)
 
         if steering_wheel.material_properties:
-            render_complex_model(shader_program, steering_wheel.vao, steering_wheel.draw_commands, steering_wheel.get_trans_matrix(), view, projection, steering_wheel.texture_ids, default_texture, steering_wheel.material_properties)
+            render_complex_model(shader_program, steering_wheel.vao, steering_wheel.draw_commands, wheel_world_model, view, projection, steering_wheel.texture_ids, default_texture, steering_wheel.material_properties)
         else:
             steering_wheel.prepare_material(shader_program)
-            render_complex_model(shader_program, steering_wheel.vao, steering_wheel.draw_commands, steering_wheel.get_trans_matrix(), view, projection, steering_wheel.texture_ids, default_texture)
+            render_complex_model(shader_program, steering_wheel.vao, steering_wheel.draw_commands, wheel_world_model, view, projection, steering_wheel.texture_ids, default_texture)
 
         # ===MOTION BLUR ===
         smoothing_factor = 0.2  # 0 = no smoothing, 1 = full lag
@@ -415,8 +427,8 @@ def main():
 
         blur_steps = 10
 
-        base_blur_strength = 700     # tune this
-        max_speed = 3.0             # speed where blur reaches full strength
+        base_blur_strength = 700
+        max_speed = 3.0
 
         motion_blur_factor = base_blur_strength * glm.smoothstep(0.0, max_speed, speed)
 
