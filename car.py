@@ -4,7 +4,7 @@ import glfw
 class Car:
     """Represents the state of the car - position, velocity, orientation. Implements physics logic."""
 
-    def __init__(self, initial_position=glm.vec3(0.0, -0.35, 0.0)):
+    def __init__(self, initial_position=glm.vec3(0.0, -0.4, 0.0)):
         # constants
         self.ACCELERATION = 0.75
         self.FRICTION = 0.5
@@ -18,7 +18,9 @@ class Car:
         self.speed = 0.0            # units per second
         self.angle = 0.0            # radians (0.0 -> along the -Z)
         self.smoothed_velocity = glm.vec3(0.0, 0.0, 0.0)
-        self.collision_radius = 0.5
+        self.collision_radius = 0.25
+        self.center_dist = .25 # distance forward/backward of car collision circles
+        self.collision_centers = []
 
     def update(self, window, delta_time):
         """Updates car state."""
@@ -58,8 +60,9 @@ class Car:
         direction_z = -glm.cos(self.angle)  # Z (forward/backward)
         direction = glm.vec3(direction_x, 0.0, direction_z)
         self.position += direction * self.speed * delta_time
+        self._update_collision_centers(direction)
 
-    def get_model_matrix(self):
+    def get_trans_matrix(self):
         """Returns the model's matrix based on current position and orientation."""
         model = glm.mat4(1.0)
         model = glm.translate(model, self.position)
@@ -68,3 +71,12 @@ class Car:
         model = glm.scale(model, glm.vec3(0.2))
 
         return model
+
+    def _update_collision_centers(self, direction):
+        c1 = self.position + direction * self.center_dist
+        c2 = self.position - direction * self.center_dist
+        self.collision_centers = [c1, c2]
+
+
+    def get_collision_centers(self):
+        return self.collision_centers
