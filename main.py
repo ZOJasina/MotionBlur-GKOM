@@ -277,6 +277,18 @@ def initialize_window():
         return
     return window, shader_program
 
+def check_collision(car, obj):
+    obj_pos = obj.get_collision_position()
+    min_distance = 100
+    for c in car.get_collision_centers():
+        distance = glm.length(c - obj_pos)
+        if distance < min_distance:
+            min_distance = distance
+
+    min_allowed_distance = car.collision_radius + obj.collision_radius
+
+    return min_distance < min_allowed_distance, min_distance, min_allowed_distance
+
 
 def main():
     window, shader_program = initialize_window()
@@ -287,19 +299,47 @@ def main():
 
     # Load batched model
     car3d = load_model("objects/porsche_obj.obj")
+    steering_wheel = (load_model("objects/steering_wheel.obj")
+        .set_material( specular=[0.1, 0.1, 0.1], shininess=8.0)
+        .translate(-0.15, -0.24, -0.16)
+        .rotate(0, -90, 0)
+        .scale(0.05))
+
+
+    static_objects = []
+
     road = (load_model("objects/straight_road.obj")
             .set_material( specular=[0.1, 0.1, 0.1], shininess=8.0)
             .translate(0.0, -0.5, 0.0)
-            .scale(0.5))
+            .scale(0.5)
+            .set_collision_center(0, -10, 0))
+    static_objects.append(road)
+
+    for z in range(0, -13, -1):
+        for x in range(0, 3):
+            static_objects.append(load_model("objects/pine_tree.obj")
+                    .set_material(specular=[0.2, 0.2, 0.2], shininess=16.0)
+                    .translate(-1.3-x*.8, -0.5, z)
+                    .scale(0.15)
+                    .set_collision_radius(0.1)
+                    .set_collision_center(0, 0, 0))
+
+
     pine_tree = (load_model("objects/pine_tree.obj")
                  .set_material(specular=[0.2, 0.2, 0.2], shininess=16.0)
-                 .translate(-1.3, -0.5, -2.0)
-                 .scale(0.15))
+                 .translate(-2.3, -0.5, -2.0)
+                 .scale(0.10)
+                 .set_collision_radius(0.1)
+                 .set_collision_center(0, 0, 0))
+    static_objects.append(pine_tree)
     green_tree = (load_model("objects/green_tree.obj")
                   .set_material(specular=[0.3, 0.3, 0.3], shininess=32.0)
                   .translate(0.5, -0.5, 0.0)
-                  .scale(0.2))
-    static_objects = [road, pine_tree, green_tree]
+                  .scale(0.2)
+                  .set_collision_radius(0.1)
+                  .set_collision_center(0, 0, 0))
+    static_objects.append(green_tree)
+
 
     glClearColor(0.1, 0.1, 0.1, 1.0)
 
@@ -377,24 +417,35 @@ def main():
         view = glm.lookAt(eye, center, up)
         glUniform3f(uni("viewPos"), eye.x, eye.y, eye.z)
 
+
+
         # === STATIC SCENERY ===
-        if pine_tree.material_properties:
-            render_complex_model(shader_program, pine_tree.vao, pine_tree.draw_commands, pine_tree.get_trans_matrix(), view, projection, pine_tree.texture_ids, default_texture, pine_tree.material_properties)
-        else:
-            pine_tree.prepare_material(shader_program)
-            render_complex_model(shader_program, pine_tree.vao, pine_tree.draw_commands, pine_tree.get_trans_matrix(), view, projection, pine_tree.texture_ids, default_texture)
+        for obj in static_objects:
+            if obj.material_properties:
+                render_complex_model(shader_program, obj.vao, obj.draw_commands, obj.get_trans_matrix(), view, projection, obj.texture_ids, default_texture, obj.material_properties)
+            else:
+                obj.prepare_material(shader_program)
+                render_complex_model(shader_program, obj.vao, obj.draw_commands, obj.get_trans_matrix(), view, projection, obj.texture_ids, default_texture)
 
-        if green_tree.material_properties:
-            render_complex_model(shader_program, green_tree.vao, green_tree.draw_commands, green_tree.get_trans_matrix(), view, projection, green_tree.texture_ids, default_texture, green_tree.material_properties)
-        else:
-            green_tree.prepare_material(shader_program)
-            render_complex_model(shader_program, green_tree.vao, green_tree.draw_commands, green_tree.get_trans_matrix(), view, projection, green_tree.texture_ids, default_texture)
 
-        if road.material_properties:
-            render_complex_model(shader_program, road.vao, road.draw_commands, road.get_trans_matrix(), view, projection, road.texture_ids, default_texture, road.material_properties)
-        else:
-            road.prepare_material(shader_program)
-            render_complex_model(shader_program, road.vao, road.draw_commands, road.get_trans_matrix(), view, projection, road.texture_ids, default_texture)
+        # === COLLISIONS ===
+        for obj in static_objects:
+            if not hasattr(obj, "collision_radius"):
+                continue  # skip objects without collision
+
+            collided, dist, min_dist = check_collision(car, obj)
+            if collided:
+                # Push the car out of the tree
+                push_dir = car.position - obj.get_collision_position()
+                push_dir = glm.normalize(push_dir)
+                push_dir.y = 0
+
+                correction = push_dir * (min_dist - dist)
+                car.position += correction
+
+                # Stop the car or reduce speed
+                car.velocity = glm.vec3(0, 0, 0)
+                car.speed = 0.0
 
         # ===MOTION BLUR ===
         smoothing_factor = 0.2  # 0 = no smoothing, 1 = full lag
@@ -404,8 +455,8 @@ def main():
 
         blur_steps = 10
 
-        base_blur_strength = 700     # tune this
-        max_speed = 3.0             # speed where blur reaches full strength
+        base_blur_strength = 700
+        max_speed = 3.0
 
         motion_blur_factor = base_blur_strength * glm.smoothstep(0.0, max_speed, speed)
 
@@ -429,9 +480,23 @@ def main():
                     render_complex_model(shader_program, obj.vao, obj.draw_commands, obj.get_trans_matrix(), view_obj_blur, projection, obj.texture_ids, default_texture)
         glUniform1f(uni("u_alpha"), 1.0)
 
+        # === STEERING WHEEL ===
+        wheel_local_scale = glm.scale(glm.mat4(1.0), glm.vec3(0.3))
+        wheel_local_base_rotate = glm.rotate(glm.mat4(1.0), glm.radians(90.0), glm.vec3(0,1,0))
+
+        wheel_local_translate = glm.translate(glm.mat4(1.0), glm.vec3(0.25, 0.5, 0.8))   # local offset in car space
+        wheel_local_transform = wheel_local_translate * (wheel_local_base_rotate) * wheel_local_scale
+
+        # compose with car model
+        car_trans_matrix = car.get_trans_matrix()
+        wheel_trans_matrix = car_trans_matrix * wheel_local_transform
+        if steering_wheel.material_properties:
+            render_complex_model(shader_program, steering_wheel.vao, steering_wheel.draw_commands, wheel_trans_matrix, view, projection, steering_wheel.texture_ids, default_texture, steering_wheel.material_properties)
+        else:
+            steering_wheel.prepare_material(shader_program)
+            render_complex_model(shader_program, steering_wheel.vao, steering_wheel.draw_commands, wheel_trans_matrix, view, projection, steering_wheel.texture_ids, default_texture)
         # === CAR === (rendered last due to windowpane opacity)
-        model_car = car.get_model_matrix()
-        render_complex_model(shader_program, car3d.vao, car3d.draw_commands, model_car, view, projection, car3d.texture_ids, default_texture, car3d.material_properties)
+        render_complex_model(shader_program, car3d.vao, car3d.draw_commands, car_trans_matrix, view, projection, car3d.texture_ids, default_texture, car3d.material_properties)
 
         glfw.swap_buffers(window)
         glfw.poll_events()
