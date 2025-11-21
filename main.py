@@ -2,12 +2,12 @@ import glfw
 from OpenGL.GL import *
 import glm
 import ctypes
-from object3d import Object3D
-from vertex_models import *
 from car import Car
 from PIL import Image
 import numpy as np
 import os
+from object3d import Object3D
+from vertex_models import load_model_batched
 
 
 def load_shader(shader_file, shader_type):
@@ -221,6 +221,7 @@ def render_complex_model(shader, vao, draw_commands, model, view, projection, te
     glBindVertexArray(0)
     return
 
+
 def load_model(path):
     """Loads a model and returns Object3D with vao, vbo, draw_commands, texture_ids, and material_properties"""
     vertices_np, draw_commands, texture_paths, material_properties = load_model_batched(path)
@@ -253,6 +254,7 @@ def load_model(path):
     print(f"Texture IDs for {path}: {texture_ids}")
     return Object3D(vao, vbo, draw_commands, texture_ids, material_properties)
 
+
 def initialize_window():
     if not glfw.init():
         print("Cannot initiate GLFW")
@@ -277,15 +279,15 @@ def initialize_window():
         return
     return window, shader_program
 
-def check_collision(car, obj):
-    obj_pos = obj.get_collision_position()
+
+def check_collision(car, collision_center_pos, collision_radius):
     min_distance = 100
     for c in car.get_collision_centers():
-        distance = glm.length(c - obj_pos)
+        distance = glm.length(c - collision_center_pos)
         if distance < min_distance:
             min_distance = distance
 
-    min_allowed_distance = car.collision_radius + obj.collision_radius
+    min_allowed_distance = car.collision_radius + collision_radius
 
     return min_distance < min_allowed_distance, min_distance, min_allowed_distance
 
@@ -295,67 +297,59 @@ def main():
     if not window:
         return
 
-    default_texture = create_default_texture()
-
-    # Load batched model
-    car3d = load_model("objects/porsche_obj.obj")
-    steering_wheel = (load_model("objects/steering_wheel.obj")
-        .set_material( specular=[0.1, 0.1, 0.1], shininess=8.0)
-        .translate(-0.15, -0.24, -0.16)
-        .rotate(0, -90, 0)
-        .scale(0.05))
-
-
-    static_objects = []
-
-    road = (load_model("objects/straight_road.obj")
-            .set_material( specular=[0.1, 0.1, 0.1], shininess=8.0)
-            .translate(0.0, -0.5, 0.0)
-            .scale(0.5)
-            .set_collision_center(0, -10, 0))
-    static_objects.append(road)
-
-    for z in range(0, -13, -1):
-        for x in range(0, 3):
-            static_objects.append(load_model("objects/pine_tree.obj")
-                    .set_material(specular=[0.2, 0.2, 0.2], shininess=16.0)
-                    .translate(-1.3-x*.8, -0.5, z)
-                    .scale(0.15)
-                    .set_collision_radius(0.1)
-                    .set_collision_center(0, 0, 0))
-
-
-    pine_tree = (load_model("objects/pine_tree.obj")
-                 .set_material(specular=[0.2, 0.2, 0.2], shininess=16.0)
-                 .translate(-2.3, -0.5, -2.0)
-                 .scale(0.10)
-                 .set_collision_radius(0.1)
-                 .set_collision_center(0, 0, 0))
-    static_objects.append(pine_tree)
-    green_tree = (load_model("objects/green_tree.obj")
-                  .set_material(specular=[0.3, 0.3, 0.3], shininess=32.0)
-                  .translate(0.5, -0.5, 0.0)
-                  .scale(0.2)
-                  .set_collision_radius(0.1)
-                  .set_collision_center(0, 0, 0))
-    static_objects.append(green_tree)
-
-
-    glClearColor(0.1, 0.1, 0.1, 1.0)
-
     def uni(name):
         loc = glGetUniformLocation(shader_program, name)
         if loc == -1:
             print(f"Warning: uniform '{name}' not found (location = -1). Maybe it's optimized out or name mismatch.")
         return loc
 
-    # Camera
+    default_texture = create_default_texture()
+
+    # === LOAD MODELS ===
+    car3d = load_model("objects/porsche_obj.obj")
+    steering_wheel = (load_model("objects/steering_wheel.obj")
+                      .set_material(specular=[0.1, 0.1, 0.1], shininess=8.0)
+                      .translate(-0.15, -0.24, -0.16).rotate(0, -90, 0).scale(0.05))
+
+    static_objects = []
+
+    grass_plane = (load_model("objects/grass.obj")
+                   .translate(1.0, -0.55, -1.0).scale(40))
+    static_objects.append(grass_plane)
+    racetrack = (load_model("objects/racetrack.obj")
+                 .translate(0.5, -0.5, 0.0).scale(0.5))
+    static_objects.append(racetrack)
+    starting_line = (load_model("objects/start.obj")
+                     .translate(0.505, -0.49, -2.25).scale(0.5)
+                     .add_collider((-2.0, 0, 0), 0.1).add_collider((1.0, 0, 0), 0.1))
+    static_objects.append(starting_line)
+    finish_line = (load_model("objects/finish.obj")
+                   .translate(0.505, -0.49, 3.25).scale(0.5)
+                   .add_collider((-2.0, 0, -2.4), 0.1).add_collider((1.0, 0, -2.4), 0.1))
+    static_objects.append(finish_line)
+
+    for z in range(0, -13, -1):
+        for x in range(0, 2):
+            static_objects.append(load_model("objects/pine_tree.obj")
+                                  .set_material(specular=[0.2, 0.2, 0.2], shininess=16.0)
+                                  .translate(-2.2-x*1.6, -0.5, z).scale(0.15)
+                                  .add_collider((0, 0, 0), 0.1))
+
+    green_tree = (load_model("objects/green_tree.obj")
+                  .set_material(specular=[0.3, 0.3, 0.3], shininess=32.0)
+                  .translate(2.0, -0.5, 0.0).scale(0.2)
+                  .add_collider((0, 0, 0), 0.1))
+    static_objects.append(green_tree)
+
+    # === CAMERA, LIGHT ===
+    glClearColor(0.55, 0.70, 0.95, 1.0)
+
     glUseProgram(shader_program)
     view = glm.lookAt(glm.vec3(0, 0, 2), glm.vec3(0, 0, 0), glm.vec3(0, 1, 0))
     fb_w, fb_h = glfw.get_framebuffer_size(window)
     projection = glm.perspective(glm.radians(45.0), fb_w / fb_h if fb_h != 0 else 4/3, 0.1, 100.0)
-    # Camera Mode
     camera_mode = 0  # 0: 3rd POV, 1: 1st POV
+
     def key_callback(window, key, scancode, action, mods):
         nonlocal camera_mode
         if key == glfw.KEY_C and action == glfw.PRESS:
@@ -363,15 +357,14 @@ def main():
             glUniform1i(uni("cameraMode"), camera_mode)
     glfw.set_key_callback(window, key_callback)
 
-    # Light
-    glUniform3f(uni("lightPos"), 1.2, 1.0, 2.0)
+    glUniform3f(uni("lightPos"), 5.0, 10.0, -5.0)
     glUniform3f(uni("viewPos"), 0.0, 0.0, 2.0)
 
     glUniform3f(uni("light.ambient"), 0.2, 0.2, 0.2)
     glUniform3f(uni("light.diffuse"), 0.8, 0.8, 0.8)
     glUniform3f(uni("light.specular"), 1.0, 1.0, 1.0)
 
-    # Car
+    # === CAR ===
     car = Car(initial_position=glm.vec3(-0.1, -0.35, 0.0))
     previous_time = glfw.get_time()
     car.prev_position = glm.vec3(car.position)
@@ -384,10 +377,9 @@ def main():
 
     # Main loop
     while not glfw.window_should_close(window):
-        # handle window resize
+        # Handle window resize
         fb_w, fb_h = glfw.get_framebuffer_size(window)
         glViewport(0, 0, fb_w, fb_h)
-        # Update projection matrix on resize
         projection = glm.perspective(glm.radians(45.0), fb_w / fb_h if fb_h != 0 else 4/3, 0.1, 100.0)
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -404,7 +396,7 @@ def main():
 
         if camera_mode == 0:
             backward_vector = -forward_vector
-            distance_behind, height_above, look_ahead = 2.0, 0.5, 1.0
+            distance_behind, height_above, look_ahead = 1.75, 0.75, 1.0
             eye = car.position + (backward_vector * distance_behind) + glm.vec3(0.0, height_above, 0.0)
             center = car.position + (forward_vector * look_ahead)
         else:
@@ -417,8 +409,6 @@ def main():
         view = glm.lookAt(eye, center, up)
         glUniform3f(uni("viewPos"), eye.x, eye.y, eye.z)
 
-
-
         # === STATIC SCENERY ===
         for obj in static_objects:
             if obj.material_properties:
@@ -427,27 +417,27 @@ def main():
                 obj.prepare_material(shader_program)
                 render_complex_model(shader_program, obj.vao, obj.draw_commands, obj.get_trans_matrix(), view, projection, obj.texture_ids, default_texture)
 
-
         # === COLLISIONS ===
         for obj in static_objects:
-            if not hasattr(obj, "collision_radius"):
+            if not obj.colliders:
                 continue  # skip objects without collision
 
-            collided, dist, min_dist = check_collision(car, obj)
-            if collided:
-                # Push the car out of the tree
-                push_dir = car.position - obj.get_collision_position()
-                push_dir = glm.normalize(push_dir)
-                push_dir.y = 0
+            for center, radius in obj.colliders.items():
+                center_pos = glm.vec3(obj.translation[0], obj.translation[1], obj.translation[2]) + center
+                collided, dist, min_dist = check_collision(car, center_pos, radius)
+                if collided:
+                    # Push the car out of the tree
+                    push_dir = car.position - center_pos
+                    push_dir = glm.normalize(push_dir)
+                    push_dir.y = 0
 
-                correction = push_dir * (min_dist - dist)
-                car.position += correction
+                    correction = push_dir * (min_dist - dist)
+                    car.position += correction
+                    # Stop the car or reduce speed
+                    car.velocity = glm.vec3(0, 0, 0)
+                    car.speed = 0.0
 
-                # Stop the car or reduce speed
-                car.velocity = glm.vec3(0, 0, 0)
-                car.speed = 0.0
-
-        # ===MOTION BLUR ===
+        # === MOTION BLUR ===
         smoothing_factor = 0.2  # 0 = no smoothing, 1 = full lag
         car.smoothed_velocity = glm.mix(car.smoothed_velocity, car.position - car.prev_position, smoothing_factor)
         velocity = car.smoothed_velocity
@@ -462,13 +452,12 @@ def main():
 
         for i in range(blur_steps):
             alpha = 1.0 / blur_steps
-            step_fraction = (i +1) / blur_steps
+            step_fraction = (i + 1) / blur_steps
 
             for obj in static_objects:
                 obj_distance = glm.length(car.position - obj.get_position())
                 obj_distance = max(obj_distance, 0.001)
                 distance_factor = 1.0 / obj_distance
-
 
                 obj_offset = velocity * step_fraction * motion_blur_factor * distance_factor
                 view_obj_blur = glm.translate(view, -obj_offset)

@@ -70,7 +70,7 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.450000
 d 1.000000
 illum 1
-map_Kd textures\\amblem.png
+map_Kd textures/amblem.png
 
 newmtl Material.011
 Ns 701.686306
@@ -131,7 +131,7 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.450000
 d 1.000000
 illum 2
-map_Kd textures\\janttto.png
+map_Kd textures/janttto.png
 
 newmtl Material.023
 Ns 225.000000

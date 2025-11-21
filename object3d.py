@@ -1,6 +1,7 @@
 from OpenGL.GL import *
 import glm
 
+
 class Object3D:
     def __init__(self, vao, vbo, draw_commands, texture_ids=[], material_properties=None):
         """
@@ -18,8 +19,9 @@ class Object3D:
         self.draw_commands = draw_commands
         self.texture_ids = texture_ids
         self.material_properties = material_properties if material_properties else []
-        self.collision_radius = 0.0
-        self.collision_center = glm.vec3(0, 0, 0)
+        # self.collision_radius = 0.0
+        # self.collision_center = glm.vec3(0, 0, 0)
+        self.colliders = {}
         self.deleted = False  # to avoid double deletion
 
         # Material properties (default values) - used when material_properties is not set
@@ -34,26 +36,33 @@ class Object3D:
         self.scale_factor = 1.0
         self.rotation = [0.0, 0.0, 0.0]
 
+    def get_position(self):
+        return glm.vec3(self.translation[0], self.translation[1], self.translation[2])
+
     # Fluent setters
+    # def set_collision_radius(self, rad):
+    #     """set collision radius for the object by a given radius."""
+    #     self.collision_radius = rad
+    #     return self
+
+    # def set_collision_center(self, x, y, z):
+    #     self.collision_center = glm.vec3(x, y, z)
+    #     return self
+
+    def add_collider(self, center: tuple, radius: float):
+        self.colliders[center] = radius
+        return self
+
+    # def get_collision_position(self):
+    #     base = glm.vec3(self.translation[0], self.translation[1], self.translation[2])
+    #     return base + self.collision_center
+
     def translate(self, x, y, z):
         """Translate the object by a given vector."""
         self.translation[0] += x
         self.translation[1] += y
         self.translation[2] += z
         return self
-
-    def set_collision_radius(self, rad):
-        """set collision radius for the object by a given radius."""
-        self.collision_radius = rad
-        return self
-
-    def set_collision_center(self, x, y, z):
-        self.collision_center = glm.vec3(x, y, z)
-        return self
-
-    def get_collision_position(self):
-        base = glm.vec3(self.translation[0], self.translation[1], self.translation[2])
-        return base + self.collision_center
 
     def scale(self, factor):
         """Scale the object by a given factor."""
@@ -100,23 +109,6 @@ class Object3D:
         tmatrix = glm.scale(tmatrix, glm.vec3(self.scale_factor))
         return tmatrix
 
-    def get_position(self):
-        return glm.vec3(self.translation[0], self.translation[1], self.translation[2])
-
-    def draw(self):
-        """
-        Placeholder for draw logic.
-        In a real OpenGL application, you would bind VAO,
-        set uniforms for material and transformations,
-        and issue the draw calls here.
-        """
-        print(f"Drawing Object3D with VAO {self.vao} and VBO {self.vbo}")
-        print(f"Material: diffuse={self.diffuse}, specular={self.specular}, "
-              f"ambient={self.ambient}, shininess={self.shininess}")
-        print(f"Transform: translation={self.translation}, scale={self.scale_factor}")
-        # Actual OpenGL draw calls would go here
-        return self
-
     def delete(self):
         """Manually delete GPU resources for this object."""
         if not self.deleted:
@@ -128,5 +120,3 @@ class Object3D:
     def __del__(self):
         """Destructor: automatically called when the object is garbage collected."""
         self.delete()
-
-

@@ -1,9 +1,9 @@
 import glm
 import glfw
 
+
 class Car:
     """Represents the state of the car - position, velocity, orientation. Implements physics logic."""
-
     def __init__(self, initial_position=glm.vec3(0.0, -0.4, 0.0)):
         # constants
         self.ACCELERATION = 0.75
@@ -19,7 +19,7 @@ class Car:
         self.angle = 0.0            # radians (0.0 -> along the -Z)
         self.smoothed_velocity = glm.vec3(0.0, 0.0, 0.0)
         self.collision_radius = 0.25
-        self.center_dist = .25 # distance forward/backward of car collision circles
+        self.center_dist = 0.25     # distance forward/backward of car collision circles
         self.collision_centers = []
 
     def update(self, window, delta_time):
@@ -57,7 +57,7 @@ class Car:
             self.angle += self.ROTATION_SPEED * delta_time * rotation_modifier
 
         direction_x = -glm.sin(self.angle)   # X (left/right)
-        direction_z = -glm.cos(self.angle)  # Z (forward/backward)
+        direction_z = -glm.cos(self.angle)   # Z (forward/backward)
         direction = glm.vec3(direction_x, 0.0, direction_z)
         self.position += direction * self.speed * delta_time
         self._update_collision_centers(direction)
