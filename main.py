@@ -328,18 +328,31 @@ def main():
                    .add_collider((-2.0, 0, -2.4), 0.1).add_collider((1.0, 0, -2.4), 0.1))
     static_objects.append(finish_line)
 
-    for z in range(0, -13, -1):
+    for z in range(7, -15, -1):
         for x in range(0, 2):
             static_objects.append(load_model("objects/pine_tree.obj")
                                   .set_material(specular=[0.2, 0.2, 0.2], shininess=16.0)
                                   .translate(-2.2-x*1.6, -0.5, z).scale(0.15)
                                   .add_collider((0, 0, 0), 0.1))
 
+    for z in range(2, -5, -1):
+        for x in range(0, 2):
+            static_objects.append(load_model("objects/green_tree.obj")
+                                  .set_material(specular=[0.3, 0.3, 0.3], shininess=32.0)
+                                  .translate(3.2+x*3, -0.5, z*2).scale(0.2)
+                                  .add_collider((0, 0, 0), 0.1))
+
     green_tree = (load_model("objects/green_tree.obj")
                   .set_material(specular=[0.3, 0.3, 0.3], shininess=32.0)
-                  .translate(2.0, -0.5, 0.0).scale(0.2)
-                  .add_collider((0, 0, 0), 0.1))
+                  .translate(20.0, -0.5, 0.0).scale(0.5).rotate(0, 90, 0)
+                  .add_collider((0, 0, 0), 0.2))
     static_objects.append(green_tree)
+
+    savanna_tree = (load_model("objects/savanna_tree.obj")
+                  .set_material(specular=[0.3, 0.3, 0.3], shininess=32.0)
+                  .translate(20.0, -0.5, 10.0).scale(0.3).rotate(0, 0, 0)
+                  .add_collider((0, 0, 0), 0.2))
+    static_objects.append(savanna_tree)
 
     # === CAMERA, LIGHT ===
     glClearColor(0.55, 0.70, 0.95, 1.0)
