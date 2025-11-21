@@ -241,17 +241,17 @@ def load_model(path):
             if tex_id is None:
                 print(
                     f"Warning: Failed to load texture {idx} for model {path}: {tex_path}")
-            else:
-                print(
-                    f"Loaded texture {idx} for model {path}: ID={tex_id}, path={tex_path}")
+            # else:
+            #     print(
+            #         f"Loaded texture {idx} for model {path}: ID={tex_id}, path={tex_path}")
         else:
             texture_ids.append(None)
-            print(f"Info: No texture path for material {idx} in model {path}")
+            # print(f"Info: No texture path for material {idx} in model {path}")
 
     loaded_count = sum(1 for tid in texture_ids if tid is not None and tid > 0)
-    print(
-        f"Loaded {loaded_count}/{len(texture_paths)} textures for model {path}")
-    print(f"Texture IDs for {path}: {texture_ids}")
+    # print(
+    #     f"Loaded {loaded_count}/{len(texture_paths)} textures for model {path}")
+    # print(f"Texture IDs for {path}: {texture_ids}")
     return Object3D(vao, vbo, draw_commands, texture_ids, material_properties)
 
 
@@ -332,8 +332,8 @@ def main():
         for x in range(0, 2):
             static_objects.append(load_model("objects/pine_tree.obj")
                                   .set_material(specular=[0.2, 0.2, 0.2], shininess=16.0)
-                                  .translate(-2.2-x*1.6, -0.5, z).scale(0.15)
-                                  .add_collider((0, 0, 0), 0.1))
+                                  .translate(-2.2-x*1.6, -0.5, z).scale(0.23)
+                                  .add_collider((0, 0, 0), 0.2))
 
     for z in range(2, -5, -1):
         for x in range(0, 2):
@@ -342,17 +342,44 @@ def main():
                                   .translate(3.2+x*3, -0.5, z*2).scale(0.2)
                                   .add_collider((0, 0, 0), 0.1))
 
+    for z in range(15, -19, -1):
+        static_objects.append(load_model("objects/bush.obj")
+                                .set_material(specular=[0.3, 0.3, 0.3], shininess=16.0)
+                                .translate(-10, -0.5, z*1.8).scale(0.8)
+                                .add_collider((0, 0, 0), 0.8))
+    for z in range(15, -19, -1):
+        static_objects.append(load_model("objects/bush.obj")
+                                .set_material(specular=[0.3, 0.3, 0.3], shininess=16.0)
+                                .translate(35, -0.5, z*1.8).scale(0.8)
+                                .add_collider((0, 0, 0), 0.8))
+    for x in range(19, -15, -1):
+        static_objects.append(load_model("objects/bush.obj")
+                                .set_material(specular=[0.3, 0.3, 0.3], shininess=16.0)
+                                .translate(x*1.8, -0.5, 28).scale(0.8).rotate(0,90,0)
+                                .add_collider((0, 0, 0), 0.8))
+    for x in range(19, -15, -1):
+        static_objects.append(load_model("objects/bush.obj")
+                                .set_material(specular=[0.3, 0.3, 0.3], shininess=16.0)
+                                .translate(x*1.8, -0.5, -28).scale(0.8).rotate(0,90,0)
+                                .add_collider((0, 0, 0), 0.8))
+
     green_tree = (load_model("objects/green_tree.obj")
                   .set_material(specular=[0.3, 0.3, 0.3], shininess=32.0)
                   .translate(20.0, -0.5, 0.0).scale(0.5).rotate(0, 90, 0)
-                  .add_collider((0, 0, 0), 0.2))
+                  .add_collider((0, 0, 0), 0.3))
     static_objects.append(green_tree)
 
     savanna_tree = (load_model("objects/savanna_tree.obj")
                   .set_material(specular=[0.3, 0.3, 0.3], shininess=32.0)
-                  .translate(20.0, -0.5, 10.0).scale(0.3).rotate(0, 0, 0)
+                  .translate(16.0, -0.5, 10.0).scale(0.3).rotate(0, 0, 0)
                   .add_collider((0, 0, 0), 0.2))
     static_objects.append(savanna_tree)
+
+    savanna_tree2 = (load_model("objects/savanna_tree.obj")
+                  .set_material(specular=[0.3, 0.3, 0.3], shininess=32.0)
+                  .translate(13.0, -0.5, -15.0).scale(0.5).rotate(0, 45, 0)
+                  .add_collider((0, 0, 0), 0.3))
+    static_objects.append(savanna_tree2)
 
     # === CAMERA, LIGHT ===
     glClearColor(0.55, 0.70, 0.95, 1.0)
@@ -459,7 +486,7 @@ def main():
         blur_steps = 10
 
         base_blur_strength = 700
-        max_speed = 3.0
+        max_speed = 5.0
 
         motion_blur_factor = base_blur_strength * glm.smoothstep(0.0, max_speed, speed)
 

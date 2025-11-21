@@ -112,7 +112,7 @@ class Object3D:
     def delete(self):
         """Manually delete GPU resources for this object."""
         if not self.deleted:
-            print(f"Deleting VAO {self.vao} and VBO {self.vbo}")
+            # print(f"Deleting VAO {self.vao} and VBO {self.vbo}")
             glDeleteVertexArrays(1, [self.vao])
             glDeleteBuffers(1, [self.vbo])
             self.deleted = True
