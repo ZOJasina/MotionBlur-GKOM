@@ -357,6 +357,11 @@ def main():
                                   .set_material(specular=[0.2, 0.2, 0.2], shininess=16.0)
                                   .translate(-2.2-x*1.6, -0.5, z).scale(0.23)
                                   .add_collider((0, 0, 0), 0.2))
+    for z in range(0, 6, 2):
+        static_objects.append(load_model("objects/pine_tree.obj")
+                                .set_material(specular=[0.2, 0.2, 0.2], shininess=16.0)
+                                .translate(27, -0.5, z+5).scale(0.15)
+                                .add_collider((0, 0, 0), 0.2))
 
     for z in range(2, -5, -1):
         for x in range(0, 2):
@@ -364,38 +369,31 @@ def main():
                                   .set_material(specular=[0.3, 0.3, 0.3], shininess=32.0)
                                   .translate(3.2+x*3, -0.5, z*2).scale(0.2)
                                   .add_collider((0, 0, 0), 0.1))
+    for z in range(0, 6, 1):
+        static_objects.append(load_model("objects/pole.obj")
+                                .set_material(specular=[0.3, 0.3, 0.3], shininess=32.0)
+                                .translate(15, -0.5, z-20).scale(0.2)
+                                .add_collider((0, 0, 0), 0.1))
+        static_objects.append(load_model("objects/pole.obj")
+                                .set_material(specular=[0.3, 0.3, 0.3], shininess=32.0)
+                                .translate(3, -0.5, z-17).scale(0.2)
+                                .add_collider((0, 0, 0), 0.1))
 
-    # for z in range(15, -19, -1):
-    #     static_objects.append(load_model("objects/bush.obj")
-    #                             .set_material(specular=[0.3, 0.3, 0.3], shininess=16.0)
-    #                             .translate(-10, -0.5, z*1.8).scale(0.8)
-    #                             .add_collider((0, 0, 0), 0.8))
-    # for z in range(15, -19, -1):
-    #     static_objects.append(load_model("objects/bush.obj")
-    #                             .set_material(specular=[0.3, 0.3, 0.3], shininess=16.0)
-    #                             .translate(35, -0.5, z*1.8).scale(0.8)
-    #                             .add_collider((0, 0, 0), 0.8))
-    # for x in range(19, -15, -1):
-    #     static_objects.append(load_model("objects/bush.obj")
-    #                             .set_material(specular=[0.3, 0.3, 0.3], shininess=16.0)
-    #                             .translate(x*1.8, -0.5, 28).scale(0.8).rotate(0,90,0)
-    #                             .add_collider((0, 0, 0), 0.8))
-    # for x in range(19, -15, -1):
-    #     static_objects.append(load_model("objects/bush.obj")
-    #                             .set_material(specular=[0.3, 0.3, 0.3], shininess=16.0)
-    #                             .translate(x*1.8, -0.5, -28).scale(0.8).rotate(0,90,0)
-    #                             .add_collider((0, 0, 0), 0.8))
-    #TODO: add full length coliders for big bushes and other objects
     for z in range(0, 2, 1):
-        static_objects.append(load_model("objects/big_bush.obj")
-                                .set_material(specular=[0.3, 0.3, 0.3], shininess=16.0)
-                                .translate(10, -0.5, -30+z*57).scale(0.8).rotate(0,90,0)
-                                .add_collider((0, 0, 0), 0.8))
-    for x in range(0, 2, 1):
-        static_objects.append(load_model("objects/big_bush.obj")
+        big_bush = (load_model("objects/big_bush.obj")
                             .set_material(specular=[0.3, 0.3, 0.3], shininess=16.0)
-                            .translate(35-x*45, -0.5, 0).scale(0.8)
-                            .add_collider((0, 0, 0), 0.8))
+                            .translate(10, -0.5, -30+z*57).scale(0.8).rotate(0,90,0))
+        for x in range(30, -24, -2):
+            big_bush.add_collider((x, 0, 0), 0.95)
+        static_objects.append(big_bush)
+
+    for x in range(0, 2, 1):
+        big_bush_side = (load_model("objects/big_bush.obj")
+                            .set_material(specular=[0.3, 0.3, 0.3], shininess=16.0)
+                            .translate(35-x*45, -0.5, 0).scale(0.8))
+        for z in range(24, -29, -2):
+            big_bush_side.add_collider((0, 0, z), 0.95)
+        static_objects.append(big_bush_side)
 
     fallen_green_tree = (load_model("objects/green_tree.obj")
                   .set_material(specular=[0.3, 0.3, 0.3], shininess=32.0)
@@ -421,7 +419,11 @@ def main():
                   .translate(16.0, -0.5, 10.0).scale(0.3).rotate(0, 0, 0)
                   .add_collider((0, 0, 0), 0.2))
     static_objects.append(savanna_tree)
-
+    savanna_tree3 = (load_model("objects/savanna_tree.obj")
+                  .set_material(specular=[0.3, 0.3, 0.3], shininess=32.0)
+                  .translate(21.0, -1.3, 10.0).scale(0.3).rotate(0, -75, 0)
+                  .add_collider((0, 0.8, 0), 0.3))
+    static_objects.append(savanna_tree3)
     savanna_tree2 = (load_model("objects/savanna_tree.obj")
                   .set_material(specular=[0.3, 0.3, 0.3], shininess=32.0)
                   .translate(13.0, -0.5, -15.0).scale(0.5).rotate(0, 45, 0)
