@@ -166,20 +166,38 @@ def render_model(shader, vao, vertex_count, model, view, projection):
     glBindVertexArray(0)
     return
 
+def cache_uniforms(program):
+    """Call once after program creation. Returns a dict of frequently used uniform locations."""
+    keys = [
+        "model", "view", "projection", "normalMatrix",
+        "texture_diffuse1", "useTexture",
+        "material.diffuse", "material.specular", "material.shininess", "material.ambient", "material.opacity",
+        "u_alpha", "viewPos", "cameraMode"
+    ]
+    locs = {}
+    for k in keys:
+        locs[k] = glGetUniformLocation(program, k)
+    return locs
 
-def render_complex_model(shader, vao, draw_commands, model, view, projection, texture_ids=None, default_texture=None, material_properties=None):
+
+def render_complex_model(shader, vao, draw_commands, model, view, projection, texture_ids=None, default_texture=None, material_properties=None, locs=None):
     """Renders a complex (batched) model using draw commands"""
     glUseProgram(shader)
 
     # Set uniforms
     normalMatrix = glm.transpose(glm.inverse(glm.mat3(model)))
-    glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, glm.value_ptr(model))
-    glUniformMatrix4fv(glGetUniformLocation(shader, "view"), 1, GL_FALSE, glm.value_ptr(view))
-    glUniformMatrix4fv(glGetUniformLocation(shader, "projection"), 1, GL_FALSE, glm.value_ptr(projection))
-    glUniformMatrix3fv(glGetUniformLocation(shader, "normalMatrix"), 1, GL_FALSE, glm.value_ptr(normalMatrix))
+    if locs["model"] != -1:
+        glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, glm.value_ptr(model))
+    if locs["view"] != -1:
+        glUniformMatrix4fv(glGetUniformLocation(shader, "view"), 1, GL_FALSE, glm.value_ptr(view))
+    if locs["projection"] != -1:
+        glUniformMatrix4fv(glGetUniformLocation(shader, "projection"), 1, GL_FALSE, glm.value_ptr(projection))
+    if locs["normalMatrix"] != -1:
+        glUniformMatrix3fv(glGetUniformLocation(shader, "normalMatrix"), 1, GL_FALSE, glm.value_ptr(normalMatrix))
 
     glBindVertexArray(vao)
 
+    glActiveTexture(GL_TEXTURE0)
     texture_loc = glGetUniformLocation(shader, "texture_diffuse1")
     use_texture_loc = glGetUniformLocation(shader, "useTexture")
 
@@ -190,13 +208,17 @@ def render_complex_model(shader, vao, draw_commands, model, view, projection, te
         # Apply material properties for this material if available
         if material_properties and idx < len(material_properties):
             mat_props = material_properties[idx]
-            glUniform3f(glGetUniformLocation(shader, "material.diffuse"), mat_props['diffuse'][0], mat_props['diffuse'][1], mat_props['diffuse'][2])
-            glUniform3f(glGetUniformLocation(shader, "material.specular"), mat_props['specular'][0], mat_props['specular'][1], mat_props['specular'][2])
-            glUniform1f(glGetUniformLocation(shader, "material.shininess"), mat_props['shininess'])
-            glUniform3f(glGetUniformLocation(shader, "material.ambient"), mat_props['ambient'][0], mat_props['ambient'][1], mat_props['ambient'][2])
-            glUniform1f(glGetUniformLocation(shader, "material.opacity"), mat_props['opacity'])
+            if locs["material.diffuse"] != -1:
+                glUniform3f(glGetUniformLocation(shader, "material.diffuse"), mat_props['diffuse'][0], mat_props['diffuse'][1], mat_props['diffuse'][2])
+            if locs["material.specular"] != -1:
+                glUniform3f(glGetUniformLocation(shader, "material.specular"), mat_props['specular'][0], mat_props['specular'][1], mat_props['specular'][2])
+            if locs["material.shininess"] != -1:
+                glUniform1f(glGetUniformLocation(shader, "material.shininess"), mat_props['shininess'])
+            if locs["material.ambient"] != -1:
+                glUniform3f(glGetUniformLocation(shader, "material.ambient"), mat_props['ambient'][0], mat_props['ambient'][1], mat_props['ambient'][2])
+            if locs["material.opacity"] != -1:
+                glUniform1f(glGetUniformLocation(shader, "material.opacity"), mat_props['opacity'])
 
-        glActiveTexture(GL_TEXTURE0)
 
         tex_id = None
         if texture_ids and idx < len(texture_ids) and texture_ids[idx] is not None:
@@ -304,6 +326,7 @@ def main():
         return loc
 
     default_texture = create_default_texture()
+    locs = cache_uniforms(shader_program)
 
     # === LOAD MODELS ===
     car3d = load_model("objects/porsche_obj.obj")
@@ -342,32 +365,56 @@ def main():
                                   .translate(3.2+x*3, -0.5, z*2).scale(0.2)
                                   .add_collider((0, 0, 0), 0.1))
 
-    for z in range(15, -19, -1):
-        static_objects.append(load_model("objects/bush.obj")
+    # for z in range(15, -19, -1):
+    #     static_objects.append(load_model("objects/bush.obj")
+    #                             .set_material(specular=[0.3, 0.3, 0.3], shininess=16.0)
+    #                             .translate(-10, -0.5, z*1.8).scale(0.8)
+    #                             .add_collider((0, 0, 0), 0.8))
+    # for z in range(15, -19, -1):
+    #     static_objects.append(load_model("objects/bush.obj")
+    #                             .set_material(specular=[0.3, 0.3, 0.3], shininess=16.0)
+    #                             .translate(35, -0.5, z*1.8).scale(0.8)
+    #                             .add_collider((0, 0, 0), 0.8))
+    # for x in range(19, -15, -1):
+    #     static_objects.append(load_model("objects/bush.obj")
+    #                             .set_material(specular=[0.3, 0.3, 0.3], shininess=16.0)
+    #                             .translate(x*1.8, -0.5, 28).scale(0.8).rotate(0,90,0)
+    #                             .add_collider((0, 0, 0), 0.8))
+    # for x in range(19, -15, -1):
+    #     static_objects.append(load_model("objects/bush.obj")
+    #                             .set_material(specular=[0.3, 0.3, 0.3], shininess=16.0)
+    #                             .translate(x*1.8, -0.5, -28).scale(0.8).rotate(0,90,0)
+    #                             .add_collider((0, 0, 0), 0.8))
+    #TODO: add full length coliders for big bushes and other objects
+    for z in range(0, 2, 1):
+        static_objects.append(load_model("objects/big_bush.obj")
                                 .set_material(specular=[0.3, 0.3, 0.3], shininess=16.0)
-                                .translate(-10, -0.5, z*1.8).scale(0.8)
+                                .translate(10, -0.5, -30+z*57).scale(0.8).rotate(0,90,0)
                                 .add_collider((0, 0, 0), 0.8))
-    for z in range(15, -19, -1):
-        static_objects.append(load_model("objects/bush.obj")
-                                .set_material(specular=[0.3, 0.3, 0.3], shininess=16.0)
-                                .translate(35, -0.5, z*1.8).scale(0.8)
-                                .add_collider((0, 0, 0), 0.8))
-    for x in range(19, -15, -1):
-        static_objects.append(load_model("objects/bush.obj")
-                                .set_material(specular=[0.3, 0.3, 0.3], shininess=16.0)
-                                .translate(x*1.8, -0.5, 28).scale(0.8).rotate(0,90,0)
-                                .add_collider((0, 0, 0), 0.8))
-    for x in range(19, -15, -1):
-        static_objects.append(load_model("objects/bush.obj")
-                                .set_material(specular=[0.3, 0.3, 0.3], shininess=16.0)
-                                .translate(x*1.8, -0.5, -28).scale(0.8).rotate(0,90,0)
-                                .add_collider((0, 0, 0), 0.8))
+    for x in range(0, 2, 1):
+        static_objects.append(load_model("objects/big_bush.obj")
+                            .set_material(specular=[0.3, 0.3, 0.3], shininess=16.0)
+                            .translate(35-x*45, -0.5, 0).scale(0.8)
+                            .add_collider((0, 0, 0), 0.8))
 
-    green_tree = (load_model("objects/green_tree.obj")
+    fallen_green_tree = (load_model("objects/green_tree.obj")
                   .set_material(specular=[0.3, 0.3, 0.3], shininess=32.0)
-                  .translate(20.0, -0.5, 0.0).scale(0.5).rotate(0, 90, 0)
+                  .translate(20.0, -0.46, 0.0).scale(0.5).rotate(0, 0, 90)
+                  .add_collider((-0.15, 0, 0), 0.15)
+                  .add_collider((-0.45, 0, 0), 0.15)
+                  .add_collider((-0.75, 0, 0), 0.15)
+                  .add_collider((-1, 0, 0), 0.2)
+                  .add_collider((-1.4, 0, 0), 0.2)
+                  .add_collider((-1.8, 0, 0), 0.2)
+                  .add_collider((-2.6, 0, 0), 0.5)
+                  .add_collider((-2.6, 0, 0.5), 0.5)
+                  .add_collider((-3.4, 0, -0.4), 0.6))
+    static_objects.append(fallen_green_tree)
+    big_green_tree = (load_model("objects/green_tree.obj")
+                  .set_material(specular=[0.3, 0.3, 0.3], shininess=32.0)
+                  .translate(22.0, -0.5, 6.0).scale(0.45).rotate(0, 90, 0)
                   .add_collider((0, 0, 0), 0.3))
-    static_objects.append(green_tree)
+    static_objects.append(big_green_tree)
 
     savanna_tree = (load_model("objects/savanna_tree.obj")
                   .set_material(specular=[0.3, 0.3, 0.3], shininess=32.0)
@@ -380,6 +427,32 @@ def main():
                   .translate(13.0, -0.5, -15.0).scale(0.5).rotate(0, 45, 0)
                   .add_collider((0, 0, 0), 0.3))
     static_objects.append(savanna_tree2)
+
+    race_barricade_red = (load_model("objects/race_barricade_red.obj")
+                  .set_material(specular=[0.3, 0.3, 0.3], shininess=32.0)
+                  .translate(20.0, -0.5, -20.0).scale(0.3).rotate(0, 0, 0)
+                  .add_collider((0, 0, 0.2), 0.2)
+                  .add_collider((0, 0, -0.2), 0.2))
+    static_objects.append(race_barricade_red)
+    race_barricade_white = (load_model("objects/race_barricade_white.obj")
+                  .set_material(specular=[0.3, 0.3, 0.3], shininess=32.0)
+                  .translate(20.0, -0.5, -18.0).scale(0.3).rotate(0, -5, 0)
+                  .add_collider((0, 0, 0.2), 0.2)
+                  .add_collider((0, 0, -0.2), 0.2))
+    static_objects.append(race_barricade_white)
+    race_barricade_red2 = (load_model("objects/race_barricade_red.obj")
+                  .set_material(specular=[0.3, 0.3, 0.3], shininess=32.0)
+                  .translate(20.0, -0.5, -16.0).scale(0.3).rotate(0, -10, 0)
+                  .add_collider((0, 0, 0.2), 0.2)
+                  .add_collider((0, 0, -0.2), 0.2))
+    static_objects.append(race_barricade_red2)
+
+    pole = (load_model("objects/pole.obj")
+                  .set_material(specular=[0.3, 0.3, 0.3], shininess=32.0)
+                  .translate(18.0, -0.4, -5.0).scale(0.2).rotate(0, -10, 0)
+                  .add_collider((0, 0, 0), 0.1))
+    static_objects.append(pole)
+
 
     # === CAMERA, LIGHT ===
     glClearColor(0.55, 0.70, 0.95, 1.0)
@@ -447,17 +520,27 @@ def main():
             center = eye + (forward_vector * look_ahead) + downward_tilt
 
         view = glm.lookAt(eye, center, up)
-        glUniform3f(uni("viewPos"), eye.x, eye.y, eye.z)
+        if locs["viewPos"] != -1:
+            glUniform3f(locs["viewPos"], eye.x, eye.y, eye.z)
+        # glUniform3f(uni("viewPos"), eye.x, eye.y, eye.z)
 
         # === STATIC SCENERY ===
         for obj in static_objects:
+            obj_distance = glm.length(car.position - obj.get_position())
+            # if obj_distance > max_dist:
+            #     continue
+            to_point = obj.get_position() - car.position
+            dot = glm.dot(car.direction, to_point)
+            if obj.colliders and dot < 0 and obj_distance > 2: # point is behind
+                continue
             if obj.material_properties:
-                render_complex_model(shader_program, obj.vao, obj.draw_commands, obj.get_trans_matrix(), view, projection, obj.texture_ids, default_texture, obj.material_properties)
+                render_complex_model(shader_program, obj.vao, obj.draw_commands, obj.get_trans_matrix(), view, projection, obj.texture_ids, default_texture, obj.material_properties, locs)
             else:
                 obj.prepare_material(shader_program)
-                render_complex_model(shader_program, obj.vao, obj.draw_commands, obj.get_trans_matrix(), view, projection, obj.texture_ids, default_texture)
+                render_complex_model(shader_program, obj.vao, obj.draw_commands, obj.get_trans_matrix(), view, projection, obj.texture_ids, default_texture, None, locs)
 
         # === COLLISIONS ===
+        collided = False
         for obj in static_objects:
             if not obj.colliders:
                 continue  # skip objects without collision
@@ -476,38 +559,51 @@ def main():
                     # Stop the car or reduce speed
                     car.velocity = glm.vec3(0, 0, 0)
                     car.speed = 0.0
+                    break
+            if collided:
+                break
 
         # === MOTION BLUR ===
-        smoothing_factor = 0.2  # 0 = no smoothing, 1 = full lag
-        car.smoothed_velocity = glm.mix(car.smoothed_velocity, car.position - car.prev_position, smoothing_factor)
-        velocity = car.smoothed_velocity
-        speed = glm.length(velocity)
+        # TODO switch off if collided
+        if not collided:
+            smoothing_factor = 0.2  # 0 = no smoothing, 1 = full lag
+            car.smoothed_velocity = glm.mix(car.smoothed_velocity, car.position - car.prev_position, smoothing_factor)
+            velocity = car.smoothed_velocity
+            speed = glm.length(velocity)
 
-        blur_steps = 10
+            blur_steps = 10
 
-        base_blur_strength = 700
-        max_speed = 5.0
+            base_blur_strength = 700
+            max_speed = 5.0
+            max_dist = 7
 
-        motion_blur_factor = base_blur_strength * glm.smoothstep(0.0, max_speed, speed)
+            motion_blur_factor = base_blur_strength * glm.smoothstep(0.0, max_speed, speed)
 
-        for i in range(blur_steps):
-            alpha = 1.0 / blur_steps
-            step_fraction = (i + 1) / blur_steps
+            for i in range(blur_steps):
+                alpha = 1.0 / blur_steps
+                step_fraction = (i + 1) / blur_steps
 
-            for obj in static_objects:
-                obj_distance = glm.length(car.position - obj.get_position())
-                obj_distance = max(obj_distance, 0.001)
-                distance_factor = 1.0 / obj_distance
+                for obj in static_objects:
+                    obj_distance = glm.length(car.position - obj.get_position())
+                    if obj_distance > max_dist:
+                        continue
+                    to_point = obj.get_position() - car.position
+                    dot = glm.dot(car.direction, to_point)
+                    if dot < 0: # point is behind
+                        continue
 
-                obj_offset = velocity * step_fraction * motion_blur_factor * distance_factor
-                view_obj_blur = glm.translate(view, -obj_offset)
-                glUniform1f(uni("u_alpha"), alpha)
-                if obj.material_properties:
-                    render_complex_model(shader_program, obj.vao, obj.draw_commands, obj.get_trans_matrix(), view_obj_blur, projection, obj.texture_ids, default_texture, obj.material_properties)
-                else:
-                    obj.prepare_material(shader_program)
-                    render_complex_model(shader_program, obj.vao, obj.draw_commands, obj.get_trans_matrix(), view_obj_blur, projection, obj.texture_ids, default_texture)
-        glUniform1f(uni("u_alpha"), 1.0)
+                    obj_distance = max(obj_distance, 0.001)
+                    distance_factor = 1.0 / obj_distance
+
+                    obj_offset = velocity * step_fraction * motion_blur_factor * distance_factor
+                    view_obj_blur = glm.translate(view, -obj_offset)
+                    glUniform1f(uni("u_alpha"), alpha)
+                    if obj.material_properties:
+                        render_complex_model(shader_program, obj.vao, obj.draw_commands, obj.get_trans_matrix(), view_obj_blur, projection, obj.texture_ids, default_texture, obj.material_properties, locs)
+                    else:
+                        obj.prepare_material(shader_program)
+                        render_complex_model(shader_program, obj.vao, obj.draw_commands, obj.get_trans_matrix(), view_obj_blur, projection, obj.texture_ids, default_texture, None, locs)
+            glUniform1f(uni("u_alpha"), 1.0)
 
         # === STEERING WHEEL ===
         wheel_local_scale = glm.scale(glm.mat4(1.0), glm.vec3(0.3))
@@ -520,12 +616,12 @@ def main():
         car_trans_matrix = car.get_trans_matrix()
         wheel_trans_matrix = car_trans_matrix * wheel_local_transform
         if steering_wheel.material_properties:
-            render_complex_model(shader_program, steering_wheel.vao, steering_wheel.draw_commands, wheel_trans_matrix, view, projection, steering_wheel.texture_ids, default_texture, steering_wheel.material_properties)
+            render_complex_model(shader_program, steering_wheel.vao, steering_wheel.draw_commands, wheel_trans_matrix, view, projection, steering_wheel.texture_ids, default_texture, steering_wheel.material_properties, locs)
         else:
             steering_wheel.prepare_material(shader_program)
-            render_complex_model(shader_program, steering_wheel.vao, steering_wheel.draw_commands, wheel_trans_matrix, view, projection, steering_wheel.texture_ids, default_texture)
+            render_complex_model(shader_program, steering_wheel.vao, steering_wheel.draw_commands, wheel_trans_matrix, view, projection, steering_wheel.texture_ids, default_texture, None, locs)
         # === CAR === (rendered last due to windowpane opacity)
-        render_complex_model(shader_program, car3d.vao, car3d.draw_commands, car_trans_matrix, view, projection, car3d.texture_ids, default_texture, car3d.material_properties)
+        render_complex_model(shader_program, car3d.vao, car3d.draw_commands, car_trans_matrix, view, projection, car3d.texture_ids, default_texture, car3d.material_properties, locs)
 
         glfw.swap_buffers(window)
         glfw.poll_events()
