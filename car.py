@@ -17,6 +17,7 @@ class Car:
         self.prev_position = glm.vec3(initial_position)
         self.speed = 0.0            # units per second
         self.angle = 0.0            # radians (0.0 -> along the -Z)
+        self.direction = glm.vec3(0.0, 0.0, 0.0)
         self.smoothed_velocity = glm.vec3(0.0, 0.0, 0.0)
         self.collision_radius = 0.25
         self.center_dist = 0.25     # distance forward/backward of car collision circles
@@ -58,9 +59,9 @@ class Car:
 
         direction_x = -glm.sin(self.angle)   # X (left/right)
         direction_z = -glm.cos(self.angle)   # Z (forward/backward)
-        direction = glm.vec3(direction_x, 0.0, direction_z)
-        self.position += direction * self.speed * delta_time
-        self._update_collision_centers(direction)
+        self.direction = glm.vec3(direction_x, 0.0, direction_z)
+        self.position += self.direction * self.speed * delta_time
+        self._update_collision_centers(self.direction)
 
     def get_trans_matrix(self):
         """Returns the model's matrix based on current position and orientation."""
