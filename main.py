@@ -378,7 +378,7 @@ def main():
                                 .set_material(specular=[0.3, 0.3, 0.3], shininess=32.0)
                                 .translate(3, -0.5, z-17).scale(0.2)
                                 .add_collider((0, 0, 0), 0.1))
-
+    big_bushes = []
     for z in range(0, 2, 1):
         big_bush = (load_model("objects/big_bush.obj")
                             .set_material(specular=[0.3, 0.3, 0.3], shininess=16.0)
@@ -386,6 +386,7 @@ def main():
         for x in range(30, -24, -2):
             big_bush.add_collider((x, 0, 0), 0.95)
         static_objects.append(big_bush)
+        big_bushes.append(big_bush)
 
     for x in range(0, 2, 1):
         big_bush_side = (load_model("objects/big_bush.obj")
@@ -394,6 +395,7 @@ def main():
         for z in range(24, -29, -2):
             big_bush_side.add_collider((0, 0, z), 0.95)
         static_objects.append(big_bush_side)
+        big_bushes.append(big_bush_side)
 
     fallen_green_tree = (load_model("objects/green_tree.obj")
                   .set_material(specular=[0.3, 0.3, 0.3], shininess=32.0)
@@ -533,8 +535,9 @@ def main():
             #     continue
             to_point = obj.get_position() - car.position
             dot = glm.dot(car.direction, to_point)
-            if obj.colliders and dot < 0 and obj_distance > 2: # point is behind
-                continue
+            if obj not in big_bushes:
+                if obj.colliders and dot < 0 and obj_distance > 2: # point is behind
+                    continue
             if obj.material_properties:
                 render_complex_model(shader_program, obj.vao, obj.draw_commands, obj.get_trans_matrix(), view, projection, obj.texture_ids, default_texture, obj.material_properties, locs)
             else:
@@ -566,7 +569,6 @@ def main():
                 break
 
         # === MOTION BLUR ===
-        # TODO switch off if collided
         if not collided:
             smoothing_factor = 0.2  # 0 = no smoothing, 1 = full lag
             car.smoothed_velocity = glm.mix(car.smoothed_velocity, car.position - car.prev_position, smoothing_factor)
