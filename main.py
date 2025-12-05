@@ -263,17 +263,10 @@ def load_model(path):
             if tex_id is None:
                 print(
                     f"Warning: Failed to load texture {idx} for model {path}: {tex_path}")
-            # else:
-            #     print(
-            #         f"Loaded texture {idx} for model {path}: ID={tex_id}, path={tex_path}")
         else:
             texture_ids.append(None)
-            # print(f"Info: No texture path for material {idx} in model {path}")
 
     loaded_count = sum(1 for tid in texture_ids if tid is not None and tid > 0)
-    # print(
-    #     f"Loaded {loaded_count}/{len(texture_paths)} textures for model {path}")
-    # print(f"Texture IDs for {path}: {texture_ids}")
     return Object3D(vao, vbo, draw_commands, texture_ids, material_properties)
 
 
@@ -526,13 +519,10 @@ def main():
         view = glm.lookAt(eye, center, up)
         if locs["viewPos"] != -1:
             glUniform3f(locs["viewPos"], eye.x, eye.y, eye.z)
-        # glUniform3f(uni("viewPos"), eye.x, eye.y, eye.z)
 
         # === STATIC SCENERY ===
         for obj in static_objects:
             obj_distance = glm.length(car.position - obj.get_position())
-            # if obj_distance > max_dist:
-            #     continue
             to_point = obj.get_position() - car.position
             dot = glm.dot(car.direction, to_point)
             if obj not in big_bushes:
