@@ -19,8 +19,6 @@ class Object3D:
         self.draw_commands = draw_commands
         self.texture_ids = texture_ids
         self.material_properties = material_properties if material_properties else []
-        # self.collision_radius = 0.0
-        # self.collision_center = glm.vec3(0, 0, 0)
         self.colliders = {}
         self.deleted = False  # to avoid double deletion
 
@@ -39,23 +37,10 @@ class Object3D:
     def get_position(self):
         return glm.vec3(self.translation[0], self.translation[1], self.translation[2])
 
-    # Fluent setters
-    # def set_collision_radius(self, rad):
-    #     """set collision radius for the object by a given radius."""
-    #     self.collision_radius = rad
-    #     return self
-
-    # def set_collision_center(self, x, y, z):
-    #     self.collision_center = glm.vec3(x, y, z)
-    #     return self
 
     def add_collider(self, center: tuple, radius: float):
         self.colliders[center] = radius
         return self
-
-    # def get_collision_position(self):
-    #     base = glm.vec3(self.translation[0], self.translation[1], self.translation[2])
-    #     return base + self.collision_center
 
     def translate(self, x, y, z):
         """Translate the object by a given vector."""
