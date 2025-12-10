@@ -490,10 +490,10 @@ def main():
             glUniform1i(uni("cameraMode"), camera_mode)
         if key == glfw.KEY_O and action == glfw.PRESS:
             base_blur_strength = max(0, base_blur_strength-250)
-            print(f"MOTION BLUR STRENGHT: {base_blur_strength}")
+            print(f"MOTION BLUR STRENGTH: {base_blur_strength}")
         if key == glfw.KEY_P and action == glfw.PRESS:
             base_blur_strength = min(5000, base_blur_strength+250)
-            print(f"MOTION BLUR STRENGHT: {base_blur_strength}")
+            print(f"MOTION BLUR STRENGTH: {base_blur_strength}")
     glfw.set_key_callback(window, key_callback)
 
     # Main loop
