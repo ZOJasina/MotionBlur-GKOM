@@ -450,7 +450,6 @@ def main():
                   .add_collider((0, 0, 0), 0.1))
     static_objects.append(pole)
 
-
     # === CAMERA, LIGHT ===
     glClearColor(0.55, 0.70, 0.95, 1.0)
 
@@ -459,13 +458,6 @@ def main():
     fb_w, fb_h = glfw.get_framebuffer_size(window)
     projection = glm.perspective(glm.radians(45.0), fb_w / fb_h if fb_h != 0 else 4/3, 0.1, 100.0)
     camera_mode = 0  # 0: 3rd POV, 1: 1st POV
-
-    def key_callback(window, key, scancode, action, mods):
-        nonlocal camera_mode
-        if key == glfw.KEY_C and action == glfw.PRESS:
-            camera_mode = 1 - camera_mode
-            glUniform1i(uni("cameraMode"), camera_mode)
-    glfw.set_key_callback(window, key_callback)
 
     glUniform3f(uni("lightPos"), 5.0, 10.0, -5.0)
     glUniform3f(uni("viewPos"), 0.0, 0.0, 2.0)
@@ -484,6 +476,25 @@ def main():
 
     glUniform1f(uni("u_alpha"), 1.0)
     glUniform1i(uni("cameraMode"), camera_mode)
+
+    # Motion Blur Settings
+    blur_steps = 10
+    base_blur_strength = 750
+    max_speed = 5.0
+    max_dist = 10
+
+    def key_callback(window, key, scancode, action, mods):
+        nonlocal camera_mode, base_blur_strength
+        if key == glfw.KEY_C and action == glfw.PRESS:
+            camera_mode = 1 - camera_mode
+            glUniform1i(uni("cameraMode"), camera_mode)
+        if key == glfw.KEY_O and action == glfw.PRESS:
+            base_blur_strength = max(0, base_blur_strength-250)
+            print(f"MOTION BLUR STRENGHT: {base_blur_strength}")
+        if key == glfw.KEY_P and action == glfw.PRESS:
+            base_blur_strength = min(5000, base_blur_strength+250)
+            print(f"MOTION BLUR STRENGHT: {base_blur_strength}")
+    glfw.set_key_callback(window, key_callback)
 
     # Main loop
     while not glfw.window_should_close(window):
@@ -564,13 +575,6 @@ def main():
             car.smoothed_velocity = glm.mix(car.smoothed_velocity, car.position - car.prev_position, smoothing_factor)
             velocity = car.smoothed_velocity
             speed = glm.length(velocity)
-
-            blur_steps = 10
-
-            base_blur_strength = 700
-            max_speed = 5.0
-            max_dist = 7
-
             motion_blur_factor = base_blur_strength * glm.smoothstep(0.0, max_speed, speed)
 
             for i in range(blur_steps):
