@@ -21,6 +21,7 @@ razy - brak pierwszej prezentacji uniemożliwia oddanie projektu.
 ### Instrukcja
 * C - zmień kamerę
 * WASD - poruszaj samochodem
+* O, P - zmieniaj parametry motion blur
 
 ### Prowadzący: dr inż. Łukasz Dąbała
 W ramach projektu należy stworzyć prostą grę wyścigową, w której dodany
